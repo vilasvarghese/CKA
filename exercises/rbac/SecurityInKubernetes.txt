@@ -1,0 +1,161 @@
+Security Primitives
+-------------------
+All access to hosts should be secured
+	Root access disabled
+	Password less auth disabled
+	only ssh key based auth should be enabled.
+	
+	Any other standard security
+	
+	Kubernetes security
+	-------------------
+	kube-apiserver at the center
+		first line of defence
+		two types of decision
+			who can access?
+				Authentication
+					Files: Username and Passwords
+					Files: Username and Tokens
+					Certificates
+					External Authentication providers - LDAP.
+			what can they do?
+				Autherization
+					RBAC.
+					ABAC
+						Attribute based access control
+					Node Authorization
+					Webhook Mode
+	Access to all other services other services are managed through TLS.
+	i.e.
+		Control plane
+			ETCD
+			Kube Control Manager
+			Kube Scheduler
+			
+		Worker Node	
+			Kubelet
+			Kube-proxy
+	are managed through TLS.
+
+	Communication between pods in cluster
+		Default all pods have access to all other services.
+		Can be restricted using 
+			NetworkServices
+				more on this latter.
+				
+	Authentication
+		Users
+			Admins
+			Developers.
+		All user access is managed through kube-apiserver
+		Variuos ways to authenticate
+		1. Using a static file as the db of users.
+			This file has a standar fo
+			
+			
+			Create a csv file of users and pwd.
+				user-details.csv
+					Password,username,userid
+					password123,user1,u0001
+					password123,user2,u0002
+					
+				This file may optionally have one more field : group.
+
+					So it can be Password, Us
+			Pass it as a parameter to kube-apiserver
+				kube-apiserver --basic-auth-file=user-details.csv
+				
+			Update /usr/local/bin/kube-apiserver
+			
+			vi /etc/kubernetes/manifests/kube-apiserver.yaml
+				add --basic-auth-file=user-details.csv 
+					after --tls-private-key-file=/etc/kubernetes/pki/apiserver.key
+					
+			Kubeadm will automtically restart the service once we update file.
+			
+		While accessing the end point.
+			curl -v -k https://master-node-ip:6443/api/vi/pods -u "user1:password123"
+		
+		2. Static Token file
+			Add field --token-auth-file=user-details.csv
+			
+			Accessing it
+				curl -v -k https://master-node-ip:6443 --header "Authorization: Bearer kasjh"
+				
+		Service Accounts 
+			Are not a part of CKA. It is a part of CKAD.
+			
+			
+	
+	TLS certificates.
+	-----------------
+		What are TLS Certificates?
+		How does k8s user certificates?
+		How to generate them?
+		How to configure them?
+		How to view them?
+		How to troubleshoot issues related to certificates?
+		
+		TLS certificates basics
+			Symmetric Encryption
+				Uses a single key to encrypt.
+				Hacker may gain access.
+				Soln: Assymetric Encryption
+			
+			Assymetric Encryption
+				Uses a pair of keys.
+					Private Key
+						Only with me.
+					Public key (Lock)
+						Anyone can access
+						
+				User: Vilas
+				XYZ: MNOP
+				Public Lock 
+					can be open only with a private key
+				Lock is public
+				anybody can use to lock.
+					anything locked can be open only by the private key.
+					
+
+		Workflow	
+			1. User first accesses the url (https)
+				Gets public key
+				(Hackers who is sniffing also may get this key)
+			2. User (browser) encrypts the symmetric key using the public key provided by the server.
+				Hacker may get access to this as well.
+			3. Server uses private key to decrypt the message.
+				Hacker doesn't have the private key and can't do anything with the message he got.
+			
+			4. Now what if a hacker creates a site similar to that of your website in look and feel. 
+				That site can't be on https or
+				that site may be self signed.
+				
+			5. While we need to ensure we are not accessing an http site.
+				our browser is intelligent to understand if it is a self signed certificate
+					i.e. a certificate not signed by a valid CA.
+			
+			
+		ssh-keygen can be used to generate a key(private) and lock (public)
+			id_rsa
+				private key
+			id_rsa.pub
+				public key
+				
+		Generating ssh key using openssl command
+			openssl genrsa -out myAcct.key 1024
+				myAcct.key
+			openssl rsa -in myAcct.key -pubout 	
+				myAcct.pem
+				
+		Make a singing in request
+			openssl req -new -key myAcct.key -out myAcct.csr -subj "/C=US/ST=CA/O=MyOrg, Inc./CN=myAcct"
+			myAcct.key and myAcct.csr are generated.
+			
+		CA authorities check the details
+			sign and send it back to you.
+			
+			Hackers can't get this signed because validation would fail.
+			
+			CA's themselves as set of private and public key's. Public key's of valid CA's are available in our browsers. It comes in trusted Certificates.
+			

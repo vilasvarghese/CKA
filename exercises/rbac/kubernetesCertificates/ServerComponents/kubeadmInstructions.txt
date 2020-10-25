@@ -1,0 +1,7 @@
+View certificates in existing cluster.
+
+	where to look for what?
+	
+
+docker ps -a
+docker logs <continer id>

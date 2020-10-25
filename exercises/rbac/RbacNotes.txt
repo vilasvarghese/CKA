@@ -1,0 +1,38 @@
+A cluster of Kubernetes
+	Has namespaces
+	Need to give access to Subjects
+	Subjects can be
+		User
+			CEO
+		Group
+			Dev
+			QA
+		Pod's
+		
+For this we create Roles
+	Roles can be 
+		cluster wide
+			ClusterRole
+		namespace specific
+			Role
+	
+	Roles we define
+		What access 
+			in verbs
+			e.g. list, get, delete, create etc.
+		On what resource
+	
+To define who has Roles
+	We create Bindings. This can be of two types
+		RoleBinding
+		ClusterRoleBinding
+		
+	RoleBindings associates
+		Roles to 
+		Subject
+			User
+			Group
+			ServiceAccount
+			
+			
+			

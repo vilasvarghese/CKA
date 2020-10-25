@@ -1,0 +1,25 @@
+ENV['VAGRANT_NO_PARALLEL'] = 'yes'
+
+Vagrant.configure(2) do |config|
+
+  config.vm.provision "shell", path: "bootstrap.sh"
+
+  NodeCount = 3
+
+  # Kubernetes Worker Nodes
+  (1..NodeCount).each do |i|
+    config.vm.define "ckahamaster#{i}" do |workernode|
+      workernode.vm.box = "centos/7"
+      workernode.vm.hostname = "ckahamaster#{i}"
+      workernode.vm.network "private_network", ip: "192.168.76.15#{i}"
+      workernode.vm.provider "virtualbox" do |v|
+        v.name = "ckahamaster#{i}"
+        v.memory = 3024
+        v.cpus = 2
+        # Prevent VirtualBox from interfering with host audio stack
+        v.customize ["modifyvm", :id, "--audio", "none"]
+      end
+      workernode.vm.provision "shell", path: "bootstrap_kworker.sh"
+    end
+  end
+ end

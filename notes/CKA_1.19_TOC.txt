@@ -1,0 +1,3334 @@
+
+						CKA 1.19 TOC
+##########################################################################################################
+25% - Cluster Architecture, Installation & Configuration
+##########################################################################################################
+
+	https://kubernetes.io/docs/concepts/overview/components/
+	https://kubernetes.io/docs/concepts/architecture/
+	https://kubernetes.io/docs/concepts/architecture/nodes/
+
+		High level overview
+		-------------------
+		While deploying Kubernetes, you get a cluster.
+
+		A Kubernetes cluster 
+			consists of a set of worker machines, 
+				called nodes, 
+				that run containerized applications. 
+		Every cluster has at least one worker node.
+
+		The worker node(s) 
+			host the Pods 
+			components of the application workload. 
+		The control plane 
+			manages the worker nodes and the Pods in the cluster. 
+		
+		In production environments, 
+			the control plane usually runs 
+				across multiple computers and a cluster usually runs multiple nodes, 
+			providing fault-tolerance and high availability.
+
+			This document outlines the various components you need to have a complete and working Kubernetes cluster.
+
+Here's the diagram of a Kubernetes cluster with all the components tied together.
+
+Components of Kubernetes
+
+Control Plane Components
+	The control plane's components 
+	------------------------------
+		Make global decisions about the cluster 
+			(for example, scheduling), 
+		Detect and respond to cluster events 
+			(for example, starting up a new pod when a deployment's replicas field is unsatisfied).
+
+		Components can be run on any machine in the cluster. 
+		However, 
+			generally set up scripts start all control plane components on the same machine
+			do not run user containers on this machine. 
+		
+		Components
+			kube-apiserver
+			etcd 
+			kube-scheduler
+			kube-controller-manager
+			
+			cloud-controller-manager
+	Worker Node Components
+	----------------------
+		kubelet 
+		kube-proxy
+		Container runtime 
+		
+		Addons 
+			Web UI
+			Container Resource Monitoring
+			Cluster-level Logging
+		DNS 
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+				The control plane's components in details
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		kube-apiserver
+		--------------
+		API server
+		----------
+			component of the Kubernetes control plane 
+			exposes the Kubernetes API. 
+			The API server is the front end for the Kubernetes control plane.
+		kube-apiserver
+		--------------
+		The main implementation of a Kubernetes API server. 
+		kube-apiserver is designed to scale horizontally—
+			scales by deploying more instances. 
+		Run several instances of kube-apiserver 
+			balance traffic between those instances.
+
+		Elaborate documentation:
+		https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/
+
+		
+		etcd
+		----
+		Consistent and highly-available key value store 
+		Kubernetes' backing store for all cluster data.
+		Make sure you have a back up plan for those data.
+
+		
+		Detailed info. on etcd:
+			https://etcd.io/docs/
+		
+		leader-based distributed system. 
+		leader periodically send heartbeats on time to all followers to keep the cluster stable.
+		Ensure that no resource starvation occurs.
+
+		Performance and stability of the cluster is sensitive to network and disk IO. 
+		Any resource starvation can lead to heartbeat timeout, 
+			causing instability of the cluster. 
+		An unstable etcd indicates that no leader is elected. 
+		Under such circumstances, 
+			a cluster cannot make any changes to its current state
+			no new pods can be scheduled.
+
+		Keeping stable etcd clusters is critical to the stability of Kubernetes clusters. 
+		Run etcd clusters on dedicated machines or isolated environments for guaranteed resource requirements.
+
+		The minimum recommended version of etcd to run in production is 3.2.10+.
+	
+		Operating etcd with limited resources is suitable only for testing purposes. 
+		For deploying in production, 
+			advanced hardware configuration is required. 
+		
+		Preferred system requirement for ETCD
+		--------------------------------------
+		Heavily loaded etcd deployments, 
+			serving tens of thousands of requests per second, 
+				tend to be CPU bound since etcd can serve requests from memory.
+				
+		High CPU capacity
+			8 to 16 dedicated cores.
+		8GB memory for small deployment 
+		16GB to 64GB for heavy deployments
+		Fast disk of about 7200 RPM
+			Most critical
+		1GbE network for common etcd deployments and 10GbE network for large etcd clusters
+
+		Further read.
+		https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/hardware.md#example-hardware-configurations
+		
+		
+		kube-scheduler
+		--------------
+		Watches for newly created Pods with NO assigned node
+			identifies a node for them to run on.
+
+		Factors taken into account for scheduling decisions include: 
+			Individual and collective resource requirements, 
+			Hardware/software/policy constraints, 
+			Affinity and anti-affinity specifications, 
+			Data locality, 
+			Inter-workload interference, 
+			Deadlines.
+		
+		kube-controller-manager
+		-----------------------
+		Component that runs controller processes.
+		Logically, each controller is a separate process
+			All compiled into a single binary and run in a single process.
+
+		These controllers include:
+
+		Node controller: 
+			Responsible for noticing and responding when nodes go down.
+		Replication controller: 
+			Responsible for maintaining the correct number of pods 
+				for every replication controller object in the system.
+		Endpoints controller: 
+			Populates the Endpoints object
+				i.e, joins Services & Pods.
+		Service Account & Token controllers: 
+			Create default accounts and API access tokens for new namespaces
+		
+		Controllers are 
+			control loops
+			watch the state of your cluster
+			make or request changes where needed
+				Each controller tries to move the current cluster state closer to the desired state.
+			
+			
+			Tracks at least one Kubernetes resource type. 
+			These objects tracked have a spec field that represents the desired state. 
+			The controller(s) for that resource are 
+				responsible for making the current = desired state.
+
+			When the Controller notices Current State <> Desired State
+				generally controller will send messages to the API server that have useful side effects.
+				Rarelly controller might carry the action out itself
+
+				Control via API server
+				----------------------
+				Job controller 
+					example Kubernetes built-in controller. 
+					
+					Job is a Kubernetes resource that runs a Pod, or perhaps several Pods, to carry out a task and then stop.
+					(Once scheduled, Pod objects become part of the desired state for a kubelet).
+
+					When the Job controller sees a new task 
+						it makes sure that, 
+						somewhere in your cluster Nodes are running the right number of Pods to get the work done. 
+						The Job controller does not run any Pods or containers itself. 
+						Instead, the Job controller tells the API server to create or remove Pods. 
+
+					After you create a new Job, 
+						the desired state is for that Job to be completed. 
+						The Job controller makes the current state for that Job be nearer to your desired state: 
+							creating Pods that do the work you wanted for that Job, so that the Job is closer to completion.
+
+					Controllers also update the objects that configure them. 
+						For example: once the work is done for a Job, 
+						the Job controller updates that Job object to mark it Finished.
+						(like how some thermostats turn a light off )
+			
+			
+				Direct control
+				--------------
+					Some controllers need to make changes to things outside of your cluster.
+					For example, 
+						if you use a control loop to 
+							make sure there are enough Nodes in your cluster, 
+							then that controller needs something outside the current cluster to set up new Nodes when needed.
+
+					Controllers that interact with external state 
+						find their desired state from the API server, 
+						then communicate directly with an external system 
+							bring the current state closer in line.
+					Read below for more details.
+					https://kubernetes.io/docs/tasks/administer-cluster/cluster-management/#cluster-autoscaling
+
+
+			Controller Design
+			-----------------
+			As a tenet of its design, 
+				Kubernetes uses lots of controllers 
+					each manage a particular aspect of cluster state. 
+			Most commonly, 
+				a particular control loop (controller) 
+					uses one kind of resource as its desired state, 
+				has a different kind of resource 
+					that it manages to make that desired state happen. 
+				For example, a controller for Jobs tracks Job objects (to discover new work) and Pod objects (to run the Jobs, and then to see when the work is finished). In this case something else creates the Jobs, whereas the Job controller creates Pods.
+
+				It's useful to have simple controllers rather than one, monolithic set of control loops that are interlinked. Controllers can fail, so Kubernetes is designed to allow for that.
+
+				Note:
+				There can be several controllers that create or update the same kind of object. Behind the scenes, Kubernetes controllers make sure that they only pay attention to the resources linked to their controlling resource.
+
+				For example, you can have Deployments and Jobs; these both create Pods. The Job controller does not delete the Pods that your Deployment created, because there is information (labels) the controllers can use to tell those Pods apart.
+
+			Ways of running controllers
+			---------------------------
+			Kubernetes comes with a set of 
+				built-in controllers that run inside the kube-controller-manager. 
+				These built-in controllers provide important core behaviors.
+
+			The Deployment controller and Job controller are examples of controllers that come as part of Kubernetes itself ("built-in" controllers). Kubernetes lets you run a resilient control plane, so that if any of the built-in controllers were to fail, another part of the control plane will take over the work.
+
+			You can find controllers that run outside the control plane, to extend Kubernetes. Or, if you want, you can write a new controller yourself. You can run your own controller as a set of Pods, or externally to Kubernetes. What fits best will depend on what that particular controller does.
+
+
+		
+		Cloud-controller-manager
+		------------------------
+		Refer https://kubernetes.io/docs/concepts/overview/components/ for details
+		Following controllers can have cloud provider dependencies:
+			Node controller: 
+				For checking the cloud provider to determine if a node has been deleted in the cloud after it stops responding
+			Route controller: 
+				For setting up routes in the underlying cloud infrastructure
+			Service controller: 
+				For creating, updating and deleting cloud provider load balancers
+		
+		
+		
+		
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+				Worker Node Components components in details
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		Node components 
+			run on every node, 
+			maintains pods 
+			provides Kubernetes runtime environment.
+
+		kubelet
+			An agent that runs on each node in the cluster. 
+			It makes sure that containers are running in a Pod.
+
+			Takes a set of PodSpecs that are provided through various mechanisms 
+			ensures that the containers described in those PodSpecs are running and healthy. 
+			The kubelet doesn't manage containers which were not created by Kubernetes.
+
+		kube-proxy
+			kube-proxy is a network proxy 
+			Runs on each node in your cluster, 
+			Implements part of the Kubernetes Service concept.
+			maintains network rules on nodes. 
+			These network rules allow network communication to your Pods 
+				from network sessions inside or outside of your cluster.
+			Uses the operating system packet filtering layer if there is one and it's available. 
+			Otherwise, kube-proxy forwards the traffic itself.
+
+		Container runtime
+			The container runtime is the software that is responsible for running containers.
+
+		Kubernetes supports 
+			several container runtimes: 
+				Docker, 
+				containerd, 
+				CRI-O
+				any implementation of the Kubernetes CRI (Container Runtime Interface).
+
+
+		Addons
+			Addons use Kubernetes resources 
+				(DaemonSet, Deployment, etc) 
+			Implement cluster features. 
+			Since they are providing cluster-level features, 
+				namespaced resources for addons belong within the kube-system namespace.
+
+			Selected addons are described below; 
+				
+			
+			Extended list of addons.
+				https://kubernetes.io/docs/concepts/cluster-administration/addons/
+				
+			1. DNS
+			Mandatory add on	
+				All Kubernetes clusters should have cluster DNS, as many examples rely on it.
+			Cluster DNS is a DNS server, in addition to the other DNS server(s) in your environment
+				Containers started by Kubernetes automatically include this DNS server in their DNS searches.
+
+			2. Web UI (Dashboard)
+			Dashboard is a general purpose, web-based UI for Kubernetes clusters. It allows users to manage and troubleshoot applications running in the cluster, as well as the cluster itself.
+
+			3. Container Resource Monitoring
+			Container Resource Monitoring records generic time-series metrics about containers in a central database, and provides a UI for browsing that data.
+
+			4. Cluster-level Logging
+			A cluster-level logging mechanism is responsible for saving container logs to a central log store with search/browsing interface
+		
+		Nodes
+		-----
+		Control Plane-Node Communication
+		Controllers
+		Cloud Controller Manager
+		
+Nodes
+-----
+		Kubernetes runs your workload by placing containers into Pods to run on Nodes. 
+		A node 
+			virtual or physical machine, 
+			Each node contains the services necessary to run 
+				Pods, managed by the control plane.	
+		There can be several nodes in a cluster
+
+		The components on a node 
+			kubelet, 
+			a container runtime, 
+			and the kube-proxy.
+			
+		Two main ways to have Nodes added to the API server:
+		----------------------------------------------------
+		The kubelet on a node self-registers to the control plane
+		manually add a Node object
+		After you create a Node object, or the kubelet on a node self-registers, 
+		control plane checks whether the new Node object is valid. 
+		
+		Kubernetes creates the representation Node object internally. 
+		Kubernetes checks that a kubelet has registered to the API server 
+			that matches the metadata.name field of the Node. 
+		If the node is healthy (kubelet, kube-proxy and [docker] should be running)
+			it is eligible to run a Pod. 
+			
+		Self-registration of Nodes
+		--------------------------
+		When the kubelet flag --register-node is true (the default), 
+			kubelet will attempt to register itself with the API server. 
+			This is the preferred pattern, used by most distros.
+
+		For self-registration, 
+			kubelet is started with the following options:
+				--kubeconfig - Path to credentials to authenticate itself to the API server.
+				--cloud-provider - How to talk to a cloud provider to read metadata about itself.
+				--register-node - Automatically register with the API server.
+				--register-with-taints - Register the node with the given list of taints (comma separated <key>=<value>:<effect>).
+			No-op if register-node is false.
+				--node-ip - IP address of the node.
+				--node-labels - Labels to add when registering the node in the cluster (see label restrictions enforced by the NodeRestriction admission plugin).
+				--node-status-update-frequency - Specifies how often kubelet posts node status to master.
+			When the Node authorization mode and NodeRestriction admission plugin are enabled, kubelets are only authorized to create/modify their own Node resource.
+		
+		Manual Node administration
+		--------------------------	
+			
+		Marking a node as unschedulable 
+		-------------------------------
+			prevents the scheduler from placing new pods onto that Node, 
+			but does not affect existing Pods on the Node. 
+			This is useful as a preparatory step before a node reboot or other maintenance.
+		
+		To mark a Node unschedulable, run:
+		-------------------------------
+			kubectl cordon $NODENAME
+		
+		
+		Node status
+		-----------
+
+	A Node's status contains the following information:
+
+		Addresses
+		Conditions
+		Capacity and Allocatable
+		Info
+	
+	
+	kubectl describe node <insert-node-name-here>
+
+	Addresses
+		Usage varies depending on
+			cloud provider 
+		or 
+			bare metal configuration.
+	HostName: 
+		The hostname as reported by the node's kernel. 
+		Can be overridden via 
+			kubelet --hostname-override parameter.
+		ExternalIP: 
+			IP address of the node that is externally routable (available from outside the cluster).
+		InternalIP: 
+			IP address of the node that is routable only within the cluster.
+		Conditions
+			Status of all Running nodes. 
+			Examples of conditions include:
+				Node Condition			Description	
+				Ready					True 
+						True:	node is healthy and ready to accept pods
+						False: 	not ready  
+						Unknown: Controller hasn't heard back from the node 
+									in the last node-monitor-grace-period 
+								(default is 40 seconds)	
+				
+				DiskPressure			True 
+						True: if pressure exists on the disk size--disk capacity is low
+				
+				MemoryPressure			True 
+						True: if pressure exists on the node memory--that is, if the node memory is low; 
+				PIDPressure				True 
+						True: if pressure exists on the processes—that is, if there are too many processes on the node; 
+						
+				NetworkUnavailable		True 
+						True: network for the node is not correctly configured, 
+				
+NB: 
+	If node is cordoned Node
+		Condition includes SchedulingDisabled. 
+		SchedulingDisabled is not a Condition in the Kubernetes API
+		Instead, cordoned nodes are marked Unschedulable in their spec.
+		
+		Ready status remains Unknown or False for longer than the pod-eviction-timeout 
+			(an argument passed to the kube-controller-manager), 
+			All the Pods on the node are scheduled for deletion by the node controller. 
+			The default eviction timeout duration is five minutes. 
+		If node is unreachable, 
+			the API server is unable to communicate with the kubelet on the node. 
+			The decision to delete the pods cannot be communicated to the kubelet 
+				until communication with the API server is re-established. 
+			In the meantime, the pods that are scheduled for deletion may continue to run on the partitioned node.
+
+		The node controller 
+			does not force delete pods until it is confirmed that they have stopped running in the cluster. You 
+				
+				can see the pods that might be running on an unreachable node as being in the Terminating or Unknown state. In cases where Kubernetes cannot deduce from the underlying infrastructure if a node has permanently left a cluster, the cluster administrator may need to delete the node object by hand. Deleting the node object from Kubernetes causes all the Pod objects running on the node to be deleted from the API server, and frees up their names.
+
+		The node lifecycle controller 
+			automatically creates taints that represent conditions. 
+			The scheduler takes the Node's taints into consideration when assigning a Pod to a Node. 
+			Pods can also have tolerations which let them tolerate a Node's taints.
+
+		Capacity and Allocatable
+			Describes the resources available on the node: CPU, memory and the maximum number of pods that can be scheduled onto the node.
+			The fields in the capacity block indicate the total amount of resources that a Node has. The allocatable block indicates the amount of resources on a Node that is available to be consumed by normal Pods.
+			You may read more about capacity and allocatable resources while learning how to reserve compute resources on a Node.
+
+		Info
+			Describes general information about the node, such as kernel version, Kubernetes version (kubelet and kube-proxy version), Docker version (if used), and OS name. This information is gathered by Kubelet from the node.
+
+		Node controller
+			The node controller 
+				Kubernetes control plane component 
+				manages various aspects of nodes.
+				Roles
+				1. Assign a CIDR block to the node when it is registered 
+					(if CIDR assignment is turned on).
+				2. keep the node controller's internal list of nodes up to date 
+					with the cloud provider's list of available machines. 
+					While running in a cloud environment, 
+						whenever a node is unhealthy, 
+						Node controller checks cloud provider if VM for that node is still available. 
+						If not, the node controller deletes the node from its list of nodes.
+				3. Monitor the nodes' health. 
+					Update the NodeReady condition of NodeStatus to ConditionUnknown 
+						when a node becomes unreachable 
+						(i.e. the node controller stops receiving heartbeats for some reason, 
+						for example due to the node being down), 
+					Evict all the pods from the node 
+						(using graceful termination) 
+						if the node continues to be unreachable. 
+						(The default timeouts are 40s to start reporting ConditionUnknown and 
+						5m after that to start evicting pods.) 
+			The node controller checks the state of each node every --node-monitor-period seconds.
+
+		Heartbeats
+			Heartbeats, sent by Kubernetes nodes, help determine the availability of a node.
+
+			Two forms of heartbeats: 
+				updates of NodeStatus and the Lease object. 
+				Each Node has an associated Lease object in the kube-node-lease namespace. 
+				Lease is a lightweight resource, 
+					which improves the performance of the node heartbeats as the cluster scales.
+
+		The kubelet is responsible for creating and updating the NodeStatus and a Lease object.
+
+		The kubelet updates the NodeStatus either when 
+			there is change in status, 
+		or 
+			there has been no update for a configured interval. 
+			default interval for NodeStatus updates is 5 minutes 
+			(much longer than the 40 second default timeout for unreachable nodes).
+		The kubelet creates and then updates 
+			its Lease object every 10 seconds (the default update interval). Lease updates occur independently from the NodeStatus updates. If the Lease update fails, the kubelet retries with exponential backoff starting at 200 milliseconds and capped at 7 seconds.
+
+		Reliability
+			The node controller limits the eviction rate to --node-eviction-rate (default 0.1) per second
+			i.e. it won't evict pods from more than 1 node per 10 seconds.
+
+The node eviction behavior changes when a node in a given availability zone becomes unhealthy. The node controller checks what percentage of nodes in the zone are unhealthy (NodeReady condition is ConditionUnknown or ConditionFalse) at the same time. If the fraction of unhealthy nodes is at least --unhealthy-zone-threshold (default 0.55) then the eviction rate is reduced: if the cluster is small (i.e. has less than or equal to --large-cluster-size-threshold nodes - default 50) then evictions are stopped, otherwise the eviction rate is reduced to --secondary-node-eviction-rate (default 0.01) per second. The reason these policies are implemented per availability zone is because one availability zone might become partitioned from the master while the others remain connected. If your cluster does not span multiple cloud provider availability zones, then there is only one availability zone (the whole cluster).
+
+A key reason for spreading your nodes across availability zones is so that the workload can be shifted to healthy zones when one entire zone goes down. Therefore, if all nodes in a zone are unhealthy then the node controller evicts at the normal rate of --node-eviction-rate. The corner case is when all zones are completely unhealthy (i.e. there are no healthy nodes in the cluster). In such a case, the node controller assumes that there's some problem with master connectivity and stops all evictions until some connectivity is restored.
+
+The node controller is also responsible for evicting pods running on nodes with NoExecute taints, unless those pods tolerate that taint. The node controller also adds taints corresponding to node problems like node unreachable or not ready. This means that the scheduler won't place Pods onto unhealthy nodes.
+
+Caution: kubectl cordon marks a node as 'unschedulable', which has the side effect of the service controller removing the node from any LoadBalancer node target lists it was previously eligible for, effectively removing incoming load balancer traffic from the cordoned node(s).
+Node capacity
+Node objects track information about the Node's resource capacity (for example: the amount of memory available, and the number of CPUs). Nodes that self register report their capacity during registration. If you manually add a Node, then you need to set the node's capacity information when you add it.
+
+The Kubernetes scheduler ensures that there are enough resources for all the Pods on a Node. The scheduler checks that the sum of the requests of containers on the node is no greater than the node's capacity. That sum of requests includes all containers managed by the kubelet, but excludes any containers started directly by the container runtime, and also excludes any processes running outside of the kubelet's control.
+		
+		
+		
+		
+		
+		
+		
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		Control Plane-Node Communication
+		https://kubernetes.io/docs/concepts/architecture/control-plane-node-communication/
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Communication paths between the control plane 
+	apiserver and the Kubernetes cluster. 
+	The intent
+		allow users to customize their installation 
+		harden the network configuration 
+		cluster can be run on an untrusted network 
+			(or on fully public IPs on a cloud provider).
+
+Node to Control Plane
+---------------------
+	All API usage from nodes/pods terminate at the apiserver 
+	No other control plane components are designed to expose remote services. 
+	The apiserver is configured to listen for remote connections 
+		on a secure HTTPS port (typically 443) 
+		with one or more forms of client authentication enabled. 
+-----------------------------------------------------------	
+	One or more forms of authorization should be enabled, 
+		especially if anonymous requests or service account tokens are allowed.
+How?
+-----------------------------------------------------------
+Nodes should be provisioned with the public root certificate 
+	they can connect securely to the apiserver along with valid client credentials. 
+	A good approach 
+		client credentials provided to the kubelet in the form of client certificate. 
+		See kubelet TLS bootstrapping for automated provisioning of kubelet client certificates.
+
+Pods that wish to connect to the apiserver 
+	can do so securely by leveraging a service account 
+	Kubernetes will automatically inject the 
+		public root certificate and 
+		a valid bearer token 
+			into the pod when it is instantiated. 
+	kubernetes service (in all namespaces) is 
+		configured with a virtual IP address 
+		that is redirected (via kube-proxy) to the 
+		HTTPS endpoint on the apiserver.
+
+The control plane (scheduler & controller) components 
+	communicate with the cluster apiserver over 
+	the secure port.
+
+	default operating mode for connections from 
+		nodes and pods running on the nodes 
+		to the control plane is secured by default and can run over untrusted and/or public networks.
+
+Control Plane to node
+---------------------
+Two primary communication paths 
+	apiserver to the kubelet process 
+	apiserver to any node/pod/service through the apiserver's proxy functionality.
+
+apiserver to kubelet
+--------------------
+used for:
+	Fetching logs for pods.
+	Attaching (through kubectl) to running pods.
+	Providing the kubelet's port-forwarding functionality.
+	These connections terminate at the kubelet's HTTPS endpoint.
+		By default, 
+			the apiserver does not verify the kubelet's serving certificate, 
+			connection subject to man-in-the-middle attacks
+			To verify this connection, 
+				There are two options
+					use the --kubelet-certificate-authority flag 
+					provide apiserver with root certificate bundle to use to verify the kubelet's serving certificate.
+				use SSH tunneling between the apiserver and kubelet if required to avoid connecting over an untrusted or public network.
+					Deprecated
+					https://kubernetes.io/docs/concepts/architecture/control-plane-node-communication/#ssh-tunnels
+
+			Finally, Kubelet authentication and/or authorization should be enabled to secure the kubelet API.
+				https://kubernetes.io/docs/admin/kubelet-authentication-authorization/
+
+apiserver to nodes, pods, and services
+--------------------------------------
+The connections from the apiserver to a node, pod, or service 
+	default to plain HTTP connections 
+	neither authenticated nor encrypted. 
+	can be run over a secure HTTPS connection by prefixing 
+		https: to the node, pod, or service name in the API URL, 
+			will not validate the certificate provided by the HTTPS endpoint 
+			nor provide client credentials 
+				Although connection will be encrypted, 
+				it will not provide any guarantees of integrity. 
+				These connections are not currently safe to run over untrusted and/or public networks.
+
+Konnectivity service 
+FEATURE STATE: Kubernetes v1.18 [beta]
+As a replacement to the SSH tunnels, the Konnectivity service provides TCP level proxy for the control plane to cluster communication. The Konnectivity service consists of two parts: the 
+	Konnectivity server and the 
+	Konnectivity agents, running in the control plane network and the nodes network respectively. The Konnectivity agents initiate connections to the Konnectivity server and maintain the network connections. After enabling the Konnectivity service, all control plane to nodes traffic goes through these connections.
+
+Follow the Konnectivity service task to set up the Konnectivity service in your cluster.
+		
+		
+##########################################################################################################
+	• Manage role based access control (RBAC)
+		D:\PraiseTheLord\HSBGInfotech\Others\vilas\CKA\exercises\rbac\SecurityInKubernetes.txt
+		D:\PraiseTheLord\HSBGInfotech\Others\vilas\CKA\exercises\rbac\RbacNotes.txt
+		
+		
+		CA
+			own public and private key pairs
+			How a server can request client to 
+			3 types of servers
+				server certificates
+					configured on server
+				client certificates
+					configured on clients
+				root certificates 
+					configured on CA's
+		Naming convention
+			Private key:
+				has key either in name or as extension
+			Public key
+				No word "key" in name or extension
+			
+		All server requires server certificates
+		All clients require client certificates
+
+Following are min. cert requirements.
+----------------------------------------------	
+		Following components needs to generate certificate (server cert and it's key)
+			kube-apiserver 
+				e.g. name apiserver.crt apiserver.key
+				clients: 
+				admin user
+					admin.crt admin.key
+				scheuler:
+					scheduler.crt and scheduler.key
+				kube-control manager
+					controller-mgr.crt and 
+				kube-proxy
+					kube-proxy.crt and kube-proxy.key
+				
+			ETCD server
+				e.g. name: etcdserver.crt etcdserver.key
+				client:
+					kube-apiserver
+						can use same keys or generate new one.
+						
+			Kubelet
+				e.g. name: kubelet.crt kubelet.key
+				client:
+					kube-apiserver
+						can use same key or generate new one.
+						
+		
+			We need a CA to manage all this.
+				That should have root certificates.
+					say ca.crt and ca.key
+----------------------------------------------
+		N.B: We can use different CA's to generate certificates.
+		For e.g. etcd needs to be more secure.
+		So we can use a separate CA for ETCD.
+		
+	openssl genrsa -out ca.key 2048
+		ca.key
+		
+	Certificate signing in request.	
+	openssl req -new -key ca.key -subj "/CN=KUBERBETES-CA" -out ca.csr
+		ca.csr
+	
+-----------------------------
+	Once these certificates are generated how do you configure to use the certificates.
+		Generally it is set in the kube-config.yaml file.
+
+	
+		/var/lib/kubelet/config.yaml
+		.conf files in /etc/kubernetes/
+
+------------------------------------
+	Server side components.
+	ETCD server
+		Will be deployed in HA mode in production.
+		We need 
+			- Client/Server certificates.
+			- Peer/Peer certificates.
+			
+			This can be defined in etcd.yaml file.
+				- --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt
+				- --cert-file=/etc/kubernetes/pki/etcd/server.crt
+			    - --key-file=/etc/kubernetes/pki/etcd/server.key
+				- --client-cert-auth=true
+
+				- --peer-trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt
+				- --peer-cert-file=/etc/kubernetes/pki/etcd/peer.crt
+				- --peer-key-file=/etc/kubernetes/pki/etcd/peer.key
+				- --peer-client-cert-auth=true	
+	
+	API Server
+		Certificate
+		openssl genrsa -out apiserver.key 2048
+			
+		CSR
+		openssl req -new -key apiserver.key -subj "/CN=kube-apiserver" -out apiserver.csr
+	
+	Specific alternative names. Since there are so many alternative names for kube-apiserver
+		
+		Create openssl.cnf file
+		Refer - https://github.com/coreos/coreos-kubernetes/blob/master/Documentation/openssl.md
+		
+		Refer D:\PraiseTheLord\HSBGInfotech\Others\vilas\CKA\exercises\rbac\kubernetesCertificates\ServerComponents\kube-apiserver
+		
+			Look for cert and key entries in api-server
+			
+	Kubelet Server
+		https api server 
+		api server calls this.
+		Certificates named after their nodes.
+		
+	How certificates are configured by kubeadm control
+	
+	kube-config in kubernetes.
+		~/.kube/config file
+		yaml
+		
+		
+	API to query for a list of pods
+		curl https://my-kube-playground:6443/api/v1/pods
+	Same with certificates
+		curl https://my-kube-playground:6443/api/v1/pods --key admin.key --cert admin.crt --cacert ca.crt
+		
+	Same with kubectl
+		kubectl get pods --server <server:6443> --client-key admin.key --client-certificate amdin.crt --certificate-authority ca.crt
+		
+	Instead of giving this with every kubectl commands, we can move this to ./kube/config file
+	
+	
+	confi file
+		3 sections
+			Clusters
+				e.g. Production cluster
+				Development cluster
+				Staging cluster
+			Contexts
+				Combine User to cluster
+				which user can do what?
+				
+			user
+				Admin Users
+				Project1 User
+				Project2 User
+------------------------------------
+apiVersion: v1
+kind: Config
+
+User details would be added to 
+	users: section	
+Clusters would be added to 
+	clusters: section
+
+- context:
+    cluster: kubernetes
+    user: kubernetes-admin
+	
+	
+	
+------------------------------------
+
+When we have multiple contexts, we can make one of them the default.
+	current-context: <one of them>
+	
+	Modifying the kubeconfig
+	------------------------
+	kubectl config command
+	kubectl config view
+	
+	Default kubeconfig
+	~./kube/config
+	
+	Use a different kubeconfig
+	kubectl config view --kubeconfig=my-custome-config.yaml
+	
+	Change default context
+	kubectl config use-context prod-user@production
+	
+	Bind a ns user to a ns. Refer context above.
+	
+	certificate-authority-data: <actual data of certificate>
+	Instead cert data can be put into a file and pass the file name.
+	
+	certificate-authority: <location to cert>
+	    /etc/kubernetes/pki/ca.crt
+		
+	
+	
+	API Groups
+	----------
+	We have been interacting with Api Server.
+	
+		/verion 
+		/api
+		
+		k8s api is grouped 
+			/metrics
+			/heathz
+			/version
+			/api
+			/apis
+			/logs  
+	
+	Cateogirized s
+		/api
+		/apis
+##########################################################################################################	
+	• Use Kubeadm to install a basic cluster
+##########################################################################################################	
+	• Manage a highly-available Kubernetes cluster
+	https://www.linuxtechi.com/setup-highly-available-kubernetes-cluster-kubeadm/
+	https://medium.com/velotio-perspectives/demystifying-high-availability-in-kubernetes-using-kubeadm-3d83ed8c458b
+	https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/ha-topology/
+	https://kubernetes.io/docs/tasks/administer-cluster/highly-available-master/
+	https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/high-availability/
+	
+	Why HA
+	------
+	Avoid single point of failure. 
+	A single master cluster may fail. 
+	Multi-master cluster uses multiple master nodes
+	Each of master node has access to same worker nodes. 
+	
+	In case of Kubernetes HA environment, 
+		Master components are replicated on multiple masters(usually three masters) and 
+		if any of the masters fail, 
+		the other masters keep the cluster up and running.
+		
+	Advantages of multi-master
+	--------------------------
+	In a single master setup, 
+		the master node manages the 
+			etcd database, 
+			API server, 
+			controller manager and 
+			scheduler, 
+			along with the worker nodes. 
+	If that single master node fails, 
+		Although Nodes and services continue to run. 
+		But we will not get the benefits of Kubernetes.
+		
+	Multi-master setup provides high availability for a single cluster 
+		improves network performance because all the masters behave like a unified data center.
+	A multi-master setup protects from
+		wide range of failure modes, like 
+			loss of single worker node 
+			failure of the master node’s etcd service. 
+	
+	Pick the diagram from 
+	https://medium.com/velotio-perspectives/demystifying-high-availability-in-kubernetes-using-kubeadm-3d83ed8c458b
+	
+	Master Node: 
+	Each master node in a multi-master environment run its’ own copy of 
+		Kube API server. 
+			This can be used for load balancing among the master nodes. 
+		etcd database, 
+			stores all the data of cluster. 
+		Kubernetes controller manager, 
+		Scheduler
+			schedules pods to nodes.
+
+	Worker Node: 
+		Like single master in the multi-master cluster also 
+			worker runs their own component 
+				orchestrating pods in the Kubernetes cluster. 
+	We need 
+		3 machines which satisfy the Kubernetes master requirement 
+		3 machines which satisfy the Kubernetes worker requirement.
+	For each master
+		install kubeadm and its dependencies. 
+		In this blog, we will use k8s 1.10.4 to implement HA.
+		
+	
+	https://www.linuxtechi.com/setup-highly-available-kubernetes-cluster-kubeadm/
+	
+	Machine details: 
+	k8s-master-1 – Minimal CentOS 7 – 192.168.1.40 – 3GB RAM, 2vCPU, 40 GB Disk
+	k8s-master-2 – Minimal CentOS 7 – 192.168.1.41 – 3GB RAM, 2vCPU, 40 GB Disk
+	k8s-master-3 – Minimal CentOS 7 – 192.168.1.42 – 3GB RAM, 2vCPU, 40 GB Disk
+	k8s-worker-1 – Minimal CentOS 7 – 192.168.1.43 – 2GB RAM, 2vCPU, 40 GB Disk
+	k8s-worker-2 – Minimal CentOS 7 – 192.168.1.44 – 2GB RAM, 2vCPU, 40 GB Disk
+
+	
+	Note: 
+		etcd cluster can also be formed outside of master nodes 
+		but for that we need additional hardware, 
+		so I am installing etcd inside my master nodes.
+
+		Minimum requirements for setting up Highly K8s cluster
+		Install Kubeadm, kubelet and kubectl on all master and worker Nodes
+		Network Connectivity among master and worker nodes
+		Internet Connectivity on all the nodes
+		Root credentials or sudo privileges user on all nodes
+		Let’s jump into the installation and configuration steps
+
+
+	I have automated the process from here to kubernetes cluster creation with kubectl, kubeadm instatllation.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	Step 1) Set Hostname and add entries in /etc/hosts on all machines (both master and worker) file
+		hostnamectl set-hostname "k8s-master-1"
+	
+		Add the following entries in /etc/hosts file on all the nodes.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+192.168.1.40   k8s-master-1 k8s-master-1
+192.168.1.41   k8s-master-2 k8s-master-2
+192.168.1.42   k8s-master-3 k8s-master-3
+192.168.1.43   k8s-worker-1 k8s-worker-1
+192.168.1.44   k8s-worker-2 k8s-worker-2
+192.168.1.45   vip-k8s-master
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+N.B. 
+	Used one additional entry “192.168.1.45   vip-k8s-master” in host file 
+	This IP and hostname will be used while configuring the haproxy and keepalived on all master nodes. 
+	This IP will be used as kube-apiserver load balancer ip. 
+	All the kube-apiserver request will come to this IP 
+		request will be distributed among actual kube-apiservers from here.
+
+
+Step 2) Not automated.
+	Install and Configure Keepalive and HAProxy on all master / control plane nodes
+	Install keepalived and haproxy on each master node using the following yum command
+
+a. 		$ sudo yum install haproxy keepalived -y
+
+	
+b. 	Configure Keepalived on k8s-master-1 first, 
+		create check_apiserver.sh script as follows,
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[kadmin@k8s-master-1 ~]$ sudo vi /etc/keepalived/check_apiserver.sh
+#!/bin/sh
+APISERVER_VIP=192.168.76.151
+APISERVER_DEST_PORT=6443
+
+errorExit() {
+    echo "*** $*" 1>&2
+    exit 1
+}
+
+curl --silent --max-time 2 --insecure https://localhost:${APISERVER_DEST_PORT}/ -o /dev/null || errorExit "Error GET https://localhost:${APISERVER_DEST_PORT}/"
+if ip addr | grep -q ${APISERVER_VIP}; then
+    curl --silent --max-time 2 --insecure https://${APISERVER_VIP}:${APISERVER_DEST_PORT}/ -o /dev/null || errorExit "Error GET https://${APISERVER_VIP}:${APISERVER_DEST_PORT}/"
+fi
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	c. Set the executable permissions
+		$ sudo chmod +x /etc/keepalived/check_apiserver.sh
+
+
+	d. Take the backup of keepalived.conf file and then truncate the file.
+		$ sudo cp /etc/keepalived/keepalived.conf /etc/keepalived/keepalived.conf-org
+		$ sudo sh -c '> /etc/keepalived/keepalived.conf'
+		
+	e. /etc/keepalived/keepalived.conf file
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[kadmin@k8s-master-1 ~]$ sudo vi /etc/keepalived/keepalived.conf
+! /etc/keepalived/keepalived.conf
+! Configuration File for keepalived
+global_defs {
+    router_id LVS_DEVEL
+}
+vrrp_script check_apiserver {
+  script "/etc/keepalived/check_apiserver.sh"
+  interval 3
+  weight -2
+  fall 10
+  rise 2
+}
+
+vrrp_instance VI_1 {
+    state MASTER
+    interface enp0s3 #eth1
+    virtual_router_id 151
+    priority 255
+    authentication {
+        auth_type PASS
+        auth_pass P@##D321!
+    }
+    virtual_ipaddress {
+        192.168.76.156/24
+    }
+    track_script {
+        check_apiserver
+    }
+}
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	f. Configure HAProxy on k8s-master-1 node, edit its configuration file and add the following contents:
+		$ sudo cp /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg-org
+
+	g. Remove all lines after default section and add following lines
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[kadmin@k8s-master-1 ~]$ sudo vi /etc/haproxy/haproxy.cfg
+#---------------------------------------------------------------------
+# apiserver frontend which proxys to the masters
+#---------------------------------------------------------------------
+frontend apiserver
+    bind *:8443
+    mode tcp
+    option tcplog
+    default_backend apiserver
+#---------------------------------------------------------------------
+# round robin balancing for apiserver
+#---------------------------------------------------------------------
+backend apiserver
+    option httpchk GET /healthz
+    http-check expect status 200
+    mode tcp
+    option ssl-hello-chk
+    balance     roundrobin
+        server k8s-master-1 192.168.1.40:6443 check
+        server k8s-master-2 192.168.1.41:6443 check
+        server k8s-master-3 192.168.1.42:6443 check
+Save and exit the file
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+	
+	h. Copy theses three files (check_apiserver.sh , keepalived.conf and haproxy.cfg) from k8s-master-1 to k8s-master-2 & 3
+
+	Run the following for loop to scp these files to master 2 and 3
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[kadmin@k8s-master-1 ~]$ for f in k8s-master-2 k8s-master-3; do scp /etc/keepalived/check_apiserver.sh /etc/keepalived/keepalived.conf root@$f:/etc/keepalived; scp /etc/haproxy/haproxy.cfg root@$f:/etc/haproxy; done
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+N.B: If you run into permission error copy it to a /home/some directory and then copy from there to the right folders.
+
+	i. Update /etc/keepalived/keepalived.conf on k8s-master-2 k8s-master-3 as follows
+		state SLAVE #So k8s-master-1 will be MASTER and other two would be slave.
+		priority 254 #on k8s-master-2
+		priority 253 #on k8s-master-3
+		
+	j. If firewall is running on master nodes then add the following firewall rules on all three master nodes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		$ sudo firewall-cmd --add-rich-rule='rule protocol value="vrrp" accept' --permanent
+		$ sudo firewall-cmd --permanent --add-port=8443/tcp
+		$ sudo firewall-cmd --reload
+
+		$ sudo systemctl enable keepalived --now
+		$ sudo systemctl enable haproxy --now
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+Verify whether VIP (virtual IP) is enabled on k8s-master-1 node because we have marked k8s-master-1 as MASTER node in keepalived configuration file.
+
+	j. ip a s
+		Output should include
+		inet 192.168.76.156/24
+		
+	Step 3) Disable Swap, 
+		set SELinux as permissive and firewall rules for Master and worker nodes
+	
+$ sudo swapoff -a 
+$ sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+
+$ sudo setenforce 0
+
+$ sudo sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config	
+or 
+$ sed -i --follow-symlinks 's/^SELINUX=enforcing/SELINUX=disabled/' /etc/sysconfig/selinux	
+
+
+
+	k. Disable firewall on master using
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+$ sudo firewall-cmd --permanent --add-port=6443/tcp
+$ sudo firewall-cmd --permanent --add-port=2379-2380/tcp
+$ sudo firewall-cmd --permanent --add-port=10250/tcp
+$ sudo firewall-cmd --permanent --add-port=10251/tcp
+$ sudo firewall-cmd --permanent --add-port=10252/tcp
+$ sudo firewall-cmd --permanent --add-port=179/tcp
+$ sudo firewall-cmd --permanent --add-port=4789/udp
+$ sudo firewall-cmd --reload
+$ sudo modprobe br_netfilter
+$ sudo sh -c "echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables"
+$ sudo sh -c "echo '1' > /proc/sys/net/ipv4/ip_forward
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	l. Run the following commands on all the worker nodes,
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+$ sudo firewall-cmd --permanent --add-port=10250/tcp
+$ sudo firewall-cmd --permanent --add-port=30000-32767/tcp                                                   
+$ sudo firewall-cmd --permanent --add-port=179/tcp
+$ sudo firewall-cmd --permanent --add-port=4789/udp
+$ sudo firewall-cmd --reload
+$ sudo modprobe br_netfilter
+$ sudo sh -c "echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables"
+$ sudo sh -c "echo '1' > /proc/sys/net/ipv4/ip_forward"
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+Step 4) Install Container Run Time (CRI) Docker on Master & Worker Nodes
+	Install Docker (Container Run Time) on all the master worker nodes, run the following command,
+$ sudo yum install -y yum-utils
+$ sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+$ sudo yum install docker-ce -y
+
+Run following systemctl command to start and enable docker service, (Run this command too on all master and worker nodes)
+
+$ sudo systemctl enable docker --now
+
+
+Step 5) Install Kubeadm, kubelet and kubectl
+
+	Install 
+		kubeadm, 
+		kubelet and 
+		kubectl 
+		on all master nodes as well as worker nodes. 
+	Before installing these packages first, we must configure Kubernetes repository, run the following command on each master and worker nodes,
+
+cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-\$basearch
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+exclude=kubelet kubeadm kubectl
+EOF
+---------------------------------------------------------------------------------------------------------------	
+
+
+ a. install these packages,
+
+		$ sudo yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
+
+ b. enable kubelet service on all nodes ( master and worker nodes)
+
+		$ sudo systemctl enable kubelet --now
+
+
+Step 6) Initialize the Kubernetes Cluster from first master node
+
+ a. Initialize k8s cluster
+		sudo kubeadm init --control-plane-endpoint "vip-k8s-master:8443" --upload-certs 
+		sudo kubeadm init --control-plane-endpoint "vip-k8s-master:8443" --upload-certs ----apiserver-advertise-address=192.168.56.1
+ 
+Great, above output confirms that Kubernetes cluster has been initialized successfully. In output we also got the commands for other master and worker nodes to join the cluster.
+
+	Note: It is recommended to copy this output to a text file for future reference.
+
+Run following commands to allow local user to use kubectl command to interact with cluster,
+
+[kadmin@k8s-master-1 ~]$ mkdir -p $HOME/.kube
+[kadmin@k8s-master-1 ~]$ sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+[kadmin@k8s-master-1 ~]$ sudo chown $(id -u):$(id -g) $HOME/.kube/config
+[kadmin@k8s-master-1 ~]$
+
+
+
+
+Let’s deploy pod network (CNI – Container Network Interface),
+[kadmin@k8s-master-1 ~]$ kubectl apply -f https://docs.projectcalico.org/v3.14/manifests/calico.yaml
+
+Once the pod network is deployed successfully, add remaining two master nodes to cluster. Just copy the command for master node to join the cluster from the output and paste it on k8s-master-2 and k8s-master-3, example is shown below
+
+Repeat the below on master2 and master3
+
+[kadmin@k8s-master-2 ~]$ sudo kubeadm join vip-k8s-master:8443 --token tun848.2hlz8uo37jgy5zqt  --discovery-token-ca-cert-hash sha256:d035f143d4bea38d54a3d827729954ab4b1d9620631ee330b8f3fbc70324abc5 --control-plane --certificate-key a0b31bb346e8d819558f8204d940782e497892ec9d3d74f08d1c0376dc3d3
+
+
+kubectl get nodes
+
+
+Step 7) Join Worker nodes to Kubernetes cluster
+To join worker nodes to cluster, copy the command for worker node from output and past it on both worker nodes, example is shown below:
+
+[kadmin@k8s-worker-1 ~]$ sudo kubeadm join vip-k8s-master:8443 --token tun848.2hlz8uo37jgy5zqt --discovery-token-ca-cert-hash sha256:d035f143d4bea38d54a3d827729954ab4b1d9620631ee330b8f3fbc70324abc5
+
+[kadmin@k8s-worker-2 ~]$ sudo kubeadm join vip-k8s-master:8443 --token tun848.2hlz8uo37jgy5zqt --discovery-token-ca-cert-hash sha256:d035f143d4bea38d54a3d827729954ab4b1d9620631ee330b8f3fbc70324abc5
+
+
+Now head to k8s-master-1 node and run below kubectl command to get status worker nodes,
+
+kubectl get nodes
+kubectl get pods -n kube-system
+
+
+Step 8) Test Highly available Kubernetes cluster
+Let’s try to connect to the cluster from remote machine (CentOS system) using load balancer dns name and port. On the remote machine first, we must install kubectl package. Run below command to set kubernetes repositories.
+
+Let’s try to connect to the cluster from remote machine (CentOS system) using load balancer dns name and port. On the remote machine first, we must install kubectl package. Run below command to set kubernetes repositories.
+
+cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-\$basearch
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+exclude=kubelet kubeadm kubectl
+EOF
+
+$ sudo yum install -y  kubectl --disableexcludes=kubernetes
+
+
+Let’s try to connect to the cluster from remote machine (CentOS system) using load balancer dns name and port. On the remote machine first, we must install kubectl package. Run below command to set kubernetes repositories.
+
+cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-\$basearch
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+exclude=kubelet kubeadm kubectl
+EOF
+
+$ sudo yum install -y  kubectl --disableexcludes=kubernetes
+
+
+Now add following entry in /etc/host file,
+
+192.168.1.45   vip-k8s-master
+
+In worker
+Create kube directory and copy /etc/kubernetes/admin.conf file from k8s-master-1 node to $HOME/.kube/config ,
+
+$ mkdir -p $HOME/.kube
+$ scp root@192.168.1.40:/etc/kubernetes/admin.conf $HOME/.kube/config
+$ sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+[kadmin@localhost ~]$ kubectl get nodes
+NAME           STATUS   ROLES    AGE    VERSION
+k8s-master-1   Ready    master   3h5m   v1.18.6
+k8s-master-2   Ready    master   163m   v1.18.6
+k8s-master-3   Ready    master   157m   v1.18.6
+k8s-worker-1   Ready    <none>   148m   v1.18.6
+k8s-worker-2   Ready    <none>   147m   v1.18.6
+
+
+
+
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+								Multi-node ETCD Cluster
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#backing-up-an-etcd-cluster 
+
+Refer below: How to setup HA-ETCD with Kubeadm
+https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/setup-ha-etcd-with-kubeadm/
+
+
+
+How to run ETCD with kubeadm in HA mode.
+https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/
+
+
+
+##########################################################################################################	
+	• Provision underlying infrastructure to deploy a Kubernetes cluster
+		
+	https://kubernetes.io/docs/setup/best-practices/cluster-large/
+	At v1.19, 
+		Kubernetes supports clusters with up to 5000 nodes. 
+		More specifically, 
+			we support configurations that meet all of the following criteria:
+				<= 5000 nodes
+				<= 150000 total pods
+				<= 300000 total containers
+				<= 100 pods per node
+
+
+	Setup
+	-----
+		A cluster 
+			set of nodes 
+			physical or virtual machines running Kubernetes agents
+			managed by a "master" (the cluster-level control plane).
+
+		Normally the number of nodes in a cluster is controlled 
+			by the value NUM_NODES in the platform-specific config-default.sh file 
+			for e.g.
+				https://github.com/kubernetes/kubernetes/blob/master/cluster/gce/config-default.sh
+
+				Simple modifyfication of this file is not supported.
+				There may be corresponding changes required for changes in this file.
+
+		While setting up large Kubernetes cluster, 
+			take care of following issues.
+			
+			Quota Issues
+			------------
+			Can run into cloud provider quota issues
+				if we create a cluster with many nodes
+			To avoid this consider:
+				Increase the quota for things like CPU, IPs, etc.
+				In GCE, for example, you'll want to increase the quota for:
+					CPUs
+					VM instances
+					Total persistent disk reserved
+					In-use IP addresses
+					Firewall Rules
+					Forwarding rules
+					Routes
+					Target pools
+					Gating the setup script so that it brings up new node VMs in smaller batches with waits in between, 
+						because some cloud providers rate limit the creation of VMs
+
+			Etcd storage
+			------------
+			To improve performance of large clusters, 
+				store events in a separate dedicated etcd instance.
+
+			When creating a cluster, existing salt scripts:
+				start and configure additional etcd instance
+				configure api-server to use it for storing events
+
+How to setup a separate etcd instance and store events in it????????????????????????????????????????????????????
+	
+			Size of master and master components
+			------------------------------------
+			On 
+				GCE/Google Kubernetes Engine, 
+				and AWS, kube-up automatically configures the proper VM size for your master depending on the number of nodes in your cluster. 
+				On other providers, 
+					you will need to configure it manually. 
+			For reference, 
+			
+			the sizes we use on GCE are
+				1-5 nodes: n1-standard-1
+				6-10 nodes: n1-standard-2
+				11-100 nodes: n1-standard-4
+				101-250 nodes: n1-standard-8
+				251-500 nodes: n1-standard-16
+				more than 500 nodes: n1-standard-32
+			And the sizes we use on AWS are
+				1-5 nodes: m3.medium
+				6-10 nodes: m3.large
+				11-100 nodes: m3.xlarge
+				101-250 nodes: m3.2xlarge
+				251-500 nodes: c4.4xlarge
+				more than 500 nodes: c4.8xlarge
+			Note:
+				On Google Kubernetes Engine, 
+				the size of the master node adjusts automatically based on the size of your cluster. 
+			For more information, see this blog post.
+			On AWS, 
+				master node sizes are currently set at cluster startup time 
+				do not change, 
+				even if you later scale your cluster up or down by manually removing or adding nodes or using a cluster autoscaler
+			
+			
+			Addon Resources
+			---------------
+			Cluster add-ons are resources like 
+					Services and 
+					Deployments (with pods) 
+				that are shipped with the Kubernetes binaries and are 
+				considered an inherent part of the Kubernetes clusters.
+
+			There are currently two types of add-ons:
+				Add-ons that will be reconciled.
+				Add-ons that will be created if they don't exist.
+			
+			N.B: Add more about this in the Glossary towards the end.
+			
+			To prevent 
+				memory leaks or 
+				other resource issues in cluster addons from consuming 
+					all the resources available on a node, 
+			Kubernetes sets resource limits on addon containers 
+				to limit the CPU and Memory resources they can consume 
+				
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+For example:
+
+  containers:
+  - name: fluentd-cloud-logging
+    image: k8s.gcr.io/fluentd-gcp:1.16
+    resources:
+      limits:
+        cpu: 100m
+        memory: 200Mi
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Except for Heapster, 
+	these limits are static and are based on data Kubernetes collected from addons running on all-node clusters. 
+	The addons consume a lot more resources when running on large deployment clusters 
+	So, if a large cluster is deployed without adjusting these values, 
+	the addons may continuously get killed because they keep hitting the limits.
+
+	To avoid running into cluster addon resource issues, 
+		when creating a cluster with many nodes, 
+		consider the following:
+
+			Scale memory and CPU limits for each of the following addons, 
+				if used, as you scale up the size of cluster 
+					(there is one replica of each handling the entire cluster so memory and CPU usage tends to grow proportionally with size/load on cluster):
+			InfluxDB and Grafana
+			kubedns, dnsmasq, and sidecar
+			Kibana
+		Scale number of replicas for the following addons, 
+			if used, along with the size of cluster 
+				(there are multiple replicas of each so increasing replicas should help handle increased load, but, 
+				since load per replica also increases slightly, 
+				also consider increasing CPU/memory limits):
+			elasticsearch
+		Increase memory and CPU limits slightly for each of the following addons, 
+			if used, along with the size of cluster 
+				(there is one replica per node but CPU/memory usage increases slightly along with cluster load/size as well):
+			FluentD with ElasticSearch Plugin
+			FluentD with GCP Plugin
+		Heapster's resource limits are set dynamically based on the initial size of your cluster (see #16185 and #22940). If you find that Heapster is running out of resources, you should adjust the formulas that compute heapster memory request (see those PRs for details).
+			More on this in troubleshoot section.
+			
+	
+	Allowing minor node failure at startup
+	-------------------------------------
+		For various reasons 
+			running kube-up.sh with a very large NUM_NODES may fail 
+				due to a very small number of nodes not coming up properly. 
+		Currently you have two choices: 
+			restart the cluster 
+				(kube-down.sh and then kube-up.sh again), or before running kube-up.sh set the environment variable ALLOWED_NOTREADY_NODES to whatever value you feel comfortable with. This will allow kube-up.sh to succeed with fewer than NUM_NODES coming up. Depending on the reason for the failure, those additional nodes may join later or the cluster may remain at a size of NUM_NODES - ALLOWED_NOTREADY_NODES
+	
+	Future reads for large production.
+		https://kubernetes.io/docs/setup/production-environment/container-runtimes/
+		https://kubernetes.io/docs/setup/production-environment/tools/
+		https://kubernetes.io/docs/setup/production-environment/turnkey/
+		https://kubernetes.io/docs/setup/production-environment/windows/
+	
+	
+	
+	https://docs.kublr.com/installation/hardware-recommendation/
+
+	Kubernetes Cluster Requirement
+	------------------------------
+	Role	 		
+	Master node	
+		Minimal required memory: 2 GB	
+		Minimal required CPU (cores): 2
+		Components 
+	Worker node	
+		Minimal required memory: 1.5	
+		Minimal required CPU (cores): 1	
+
+	Recommended
+	
+	Usually etcd can be run only with limited resources for development or testing purposes
+	When running etcd clusters in production, the following hardware guidelines are required:
+		High CPU capacity
+		8GB memory for small deployment 
+		16GB to 64GB for heavy deployments
+		Fast disk of about 7200 RPM
+		1GbE network for common etcd deployments and 10GbE network for large etcd clusters
+
+
+	
+##########################################################################################################	
+	• Perform a version upgrade on a Kubernetes cluster using Kubeadm
+	https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/
+	https://kubernetes.io/docs/reference/setup-tools/kubeadm/kubeadm-upgrade/
+	
+	
+	https://kubernetes.io/docs/reference/setup-tools/kubeadm/kubeadm-upgrade/
+	
+	Upgrading kubeadm clusters
+	---------------------------
+	https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/
+	Following describes how to upgrade a Kubernetes cluster created with kubeadm  
+		from 1.18.x to version 1.19.x, 
+	and 
+		from version 1.19.x to 1.19.y (where y > x).
+		
+	The upgrade workflow at high level is the following:
+		Upgrade the primary control plane node.
+		Upgrade additional control plane nodes.
+		Upgrade worker nodes.
+
+	Before you begin
+	----------------
+	You need to have a kubeadm Kubernetes cluster running version 1.18.0 or later.
+	Swap must be disabled.
+	The cluster should use a static control plane and etcd pods or external etcd.
+	Make sure you read the release notes carefully.
+	Make sure to back up any important components, 
+		such as app-level state stored in a database. 
+		kubeadm upgrade does not touch your workloads, 
+		only components internal to Kubernetes, 
+		but backups are always a best practice.
+		
+------------------------
+kubeadm upgrade
+on master node
+	kubeadm versions
+	yum upgrade -y kubeadm-1.12.0
+	kubeadm versions
+	kubeadm upgrade plan
+	kubeadm upgrade apply v1.12.0 -y
+	kubectl version
+		version may be the different.
+	kubectl version --short
+		Client version
+		Server version
+	watch kubectl get all -o wide
+	kubectl drain kmaster 
+	yum upgrade -y kubelet-1.12.0
+	kubectl uncordon kmaster
+	
+on worker node
+	kubectl drain kworker --ignore-daemonsets
+-----------------------------
+		
+		
+	Additional information
+	-----------------------
+	All containers are restarted after upgrade, 
+		because the container spec hash value is changed.
+	You can only upgrade from N to N+1 version (where N is minor version)
+	
+	
+	N.B: This document shows the steps for CentOS/RHEL/Fedora upgrade
+	For Ubuntu/Debian/HypriotOS refer: https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/
+	
+	Refer https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/
+	
+	
+	Upgrading control plane nodes
+	------------------------------
+		Upgrade the first (	MASTER ) control plane node
+		-----------------------------------------------
+	1. kubeadm version 
+		Should help you find the current version.
+	
+	# replace x in 1.19.x-0 with the latest patch version
+	2. yum update -y && yum upgrade -y
+		yum install -y kubeadm-1.19.x-0 --disableexcludes=kubernetes
+
+	3. Verify that the download works and has the expected version:
+		kubeadm version
+	
+	4. Drain the control plane node:
+		# replace <cp-node-name> with the name of your control plane node
+		kubectl drain <cp-node-name> --ignore-daemonsets
+	
+	5. On the control plane node, run:
+		sudo kubeadm upgrade plan
+
+	The output may include 
+	Components that must be upgraded manually after you have upgraded the control plane with 
+		'kubeadm upgrade apply':
+		
+		COMPONENT   CURRENT             AVAILABLE
+		Kubelet     1 x v1.18.4         v1.19.0
+	
+			
+	6. 		
+	
+	The table below shows the current state of component configs as understood by this version of kubeadm.
+	Configs that have a "yes" mark in the "MANUAL UPGRADE REQUIRED" column require manual config upgrade or
+	resetting to kubeadm defaults before a successful upgrade can be performed. 
+	The version to manually upgrade to is denoted in the "PREFERRED VERSION" column.
+
+	API GROUP                 CURRENT VERSION   PREFERRED VERSION   MANUAL UPGRADE REQUIRED
+	kubeproxy.config.k8s.io   v1alpha1          v1alpha1            no
+	kubelet.config.k8s.io     v1beta1           v1beta1             no
+
+
+	This command checks that your cluster can be upgraded, 
+		fetches the versions you can upgrade to. 
+		It also shows a table with the component config version states.
+
+	Note: kubeadm upgrade also automatically renews the certificates that it manages on this node. 
+	To opt-out of certificate renewal the flag --certificate-renewal=false can be used. 
+	For more information see the certificate management guide.
+	
+	Note: If kubeadm upgrade plan shows any component configs that require manual upgrade, 
+		users must provide a config file with replacement configs to 
+			kubeadm upgrade apply via the --config command line flag. Failing to do so will cause kubeadm upgrade apply to exit with an error and not perform an upgrade.
+		Choose a version to upgrade to, and run the appropriate command. For example:
+
+	7. Upgrade kubeadm
+		# replace x with the patch version you picked for this upgrade
+			sudo kubeadm upgrade apply v1.19.x #--certificate-renewal=false
+
+
+	8. Manually upgrade your CNI provider plugin.
+	
+		Your Container Network Interface (CNI) provider may have its own upgrade instructions to follow. 
+			Check the addons page to find your CNI provider and see whether additional upgrade steps are required.
+			This step is not required on additional control plane nodes if the CNI provider runs as a DaemonSet.
+
+	9. Uncordon the control plane node:
+
+		# replace <cp-node-name> with the name of your control plane node
+		kubectl uncordon <cp-node-name>
+
+
+	Refer for upgrading additional master nodes.
+	https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/
+	
+	
+	For upgrading worker nodes also refer 
+	https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/
+	
+	
+
+##########################################################################################################	
+	• Implement etcd backup and restore
+	https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/
+	https://docs.openshift.com/container-platform/4.4/backup_and_restore/backing-up-etcd.html
+	https://medium.com/velotio-perspectives/the-ultimate-guide-to-disaster-recovery-for-your-kubernetes-clusters-94143fcc8c1e
+
+	https://www.youtube.com/watch?v=wEiRS3rgdX4
+	
+	https://github.com/gardener/etcd-backup-restore
+	https://elastisys.com/backup-kubernetes-how-and-why/
+	
+	1. Understanding the pki directory
+		cd /etc/kubernetes/pki/etcd
+	ls
+		etcd certificates
+	2. cd ~
+	mkdir ~/backup
+	cp -r /etc/kubernetes/pki/ ~/backup
+		backup tls and certificates.
+	
+	Create a backup for etcd control.
+	get etcdctl
+		go get github.com/coreos/etcd/etcdctl 
+			Now etcdctl will work.
+		
+	Create a snapshot
+	ETCDCTL_API=3 \ #version
+	etcdctl snapshot save ~/backup/snapshot.db \ #command to save the snapshot
+	--endpoints=https://127.0.0.12379 \ #define endpoint
+	--cacert=/etc/kubernetes/pki/etcd/ca.crt \ #etcd cert
+	--cert=/etc/kubernetes/pki/etcd/healthcheck-client.crt \ #tls cert
+	--key=/etc/kubernetes/pki/etcd/healthcheck-client.key #tls key
+	
+		
+		ls ~/backup
+			confirm we have everything before we break the system.
+	
+	Simulate system failure
+	kubeadm reset -m
+
+	kubectl get nodes would fail
+	https://elastisys.com/backup-kubernetes-how-and-why/
+	
+	Restore cluster
+	1. Copy the certificates 
+		cp -r ~/backup/pki /etc/kubernetes/
+		ls /etc/kubernetes/pki/
+		rm -rf /etc/kubernetes/snapshot.db #we don't it here.
+	
+	2. Restore etcd 
+		ETCDCTL_API=3 \
+		etcdctl snapshot restore ~/backup/snapshot.db
+		
+		ls default.etcd/
+		tree default.etcd
+		
+		mv default.etcd/member /var/lib/etcd/
+		
+	3. initialize the kubernetes instance back.
+	
+	kubeadm init --ignore-preflight-errors=DirAvailable--var-lib-etcd
+	
+	
+		
+##########################################################################################################	
+
+15% - Workloads & Scheduling
+
+	Create an nginx pod using cli #not using yaml helps to do it quickly.
+	
+	kubectl create namespace exam
+	kubectl run webapp --image=nginx -n exam
+	
+	
+	Tips:
+		— Do not waste time creating yaml files in the interest of time.
+		- To create yaml files use the — dry-run=client option
+		
+		kubectl run nginx --image=nginx --dry-run=client -o yaml --restart=Never > abc.yaml
+		
+
+	Scheduling
+	----------
+	https://kubernetes.io/docs/concepts/scheduling-eviction/kube-scheduler/
+	scheduler watches for newly created Pods 
+		with no Node assigned. 
+	For every Pod that the scheduler discovers, 
+		scheduler takes responsibility for finding the best Node 
+	Following scheduling principles is used to decide.
+		
+		kube-scheduler
+		--------------
+		kube-scheduler 
+		default scheduler for Kubernetes 
+		runs as part of the control plane. 
+		kube-scheduler is designed so that, 
+			you can replace it with your custom scheduler.
+
+		For every newly created pod or unscheduled pods, 
+			kube-scheduler selects an optimal node 
+		However, 
+			a) every container in pods has different requirements for resources 
+			b) every pod also has different requirements. 
+		So, existing nodes need to be filtered according to the specific scheduling requirements.
+
+		In a cluster, 
+			Feasible nodes: Nodes that meet the scheduling requirements 
+			If there are no Feasible nodes, 
+				pod remains unscheduled 
+					until the scheduler is able to place it.
+
+		The scheduler finds feasible Nodes for a Pod 
+			then runs a set of functions to score the feasible Nodes 
+			picks a Node with the highest score among the feasible ones 
+				to run the Pod. 
+		Scheduler notifies API server 
+			this process is called binding.
+
+		Factors that need taken into account for scheduling decisions 
+			individual and collective 
+				resource requirements, 
+				hardware / 
+				software / 
+				policy constraints, 
+				affinity and 
+				anti-affinity specifications, 
+				data locality, 
+				inter-workload interference, and so on.
+
+		Node selection in kube-scheduler
+		--------------------------------
+		kube-scheduler selects a node in a 2-step operation:
+			1) Filtering
+			2) Scoring
+			
+			filtering 
+			---------
+				Finds the set of Nodes where it's feasible to schedule the Pod. 
+				For example, 
+					PodFitsResources filter checks whether a candidate Node 
+						has enough available resource to meet a Pod's specific resource requests. 
+					Result of this: list of suitable nodes 
+						often, there will be more than one. 
+						If the list is empty, that Pod isn't (yet) schedulable.
+
+			Scoring step
+			------------
+				scheduler ranks the remaining nodes 
+					based on the active scoring rules.
+
+			Finally, kube-scheduler assigns the Pod to the Node with the highest ranking. 
+				If there is more than one node with equal scores, 
+					kube-scheduler selects one of these at random.
+
+		2 supported ways to configure the filtering and scoring behavior
+		----------------------------------------------------------------
+		1. Scheduling Policies 
+			allow you to configure Predicates for filtering and Priorities for scoring.
+		2. Scheduling Profiles 
+			allow you to configure Plugins that implement different scheduling stages, including: 
+				QueueSort, 
+				Filter, 
+				Score, 
+				Bind, 
+				Reserve, 
+				Permit, and 
+				others. 
+			You can also configure the kube-scheduler to run different profiles.
+
+
+		Scheduling Policies
+		-------------------
+		 scheduling Policy 
+			can be used to specify 
+				predicates and priorities 
+					that the kube-scheduler runs to filter and score nodes.
+
+		Set a scheduling policy by running 
+			kube-scheduler --policy-config-file <filename> 
+		or 
+			kube-scheduler --policy-configmap <ConfigMap> 
+				and using the Policy type.
+
+
+
+			Predicates 
+			----------
+			he following predicates implement filtering:
+
+			PodFitsHostPorts: 
+				Checks if a Node has free ports (the network protocol kind) for the Pod ports the Pod is requesting.
+			PodFitsHost: 
+				Checks if a Pod specifies a specific Node by its hostname.
+			PodFitsResources: 
+				Checks if the Node has free resources (eg, CPU and Memory) 
+
+			MatchNodeSelector: 
+				Checks if a Pod's Node Selector matches the Node's label(s).
+			NoVolumeZoneConflict: 
+				Evaluate if the Volumes that a Pod requests are available on the Node, given the failure zone restrictions for that storage.
+				NoDiskConflict: 
+					Evaluates if a Pod can fit on a Node due to the volumes it requests, and those that are already mounted.
+			MaxCSIVolumeCount: 
+				Decides how many CSI volumes should be attached, and whether that's over a configured limit.
+			CheckNodeMemoryPressure: 
+				If a Node is reporting memory pressure, and there's no configured exception, 
+					the Pod won't be scheduled there.
+			CheckNodePIDPressure: 
+				If a Node is reporting that process IDs are scarce, and there's no configured exception, the Pod won'
+				t be scheduled there.
+
+			CheckNodeDiskPressure: 
+				If a Node is reporting storage pressure (a filesystem that is full or nearly full), and there's no configured exception, the Pod won't be scheduled there.
+			CheckNodeCondition: 
+				Nodes can report that they have a completely full filesystem, 
+				that networking isn't available or that kubelet is otherwise not ready to run Pods. If such a condition is set for a Node, and there's no configured exception, the Pod won't be scheduled there.
+			PodToleratesNodeTaints: 
+				checks if a Pod's tolerations can tolerate the Node's taints.
+			CheckVolumeBinding: 
+				Evaluates if a Pod can fit due to the volumes it requests. This applies for both bound and unbound PVCs.
+
+			Priorities
+			----------
+			The following priorities implement scoring:
+			SelectorSpreadPriority: 
+				Spreads Pods across hosts, 
+				considering Pods that belong to the same Service, StatefulSet or ReplicaSet.
+
+			InterPodAffinityPriority: 
+				Implements preferred inter pod affininity and antiaffinity.
+			LeastRequestedPriority: 
+				Favors nodes with fewer requested resources. In other words, the more Pods that are placed on a Node, and the more resources those Pods use, the lower the ranking this policy will give.
+			MostRequestedPriority: 
+				Favors nodes with most requested resources. This policy will fit the scheduled Pods onto the smallest number of Nodes needed to run your overall set of workloads.
+			RequestedToCapacityRatioPriority: 
+				Creates a requestedToCapacity based ResourceAllocationPriority using default resource scoring function shape.
+			BalancedResourceAllocation: 
+				Favors nodes with balanced resource usage.
+			NodePreferAvoidPodsPriority: 
+				Prioritizes nodes according to the node annotation scheduler.alpha.kubernetes.io/preferAvoidPods. You can use this to hint that two different Pods shouldn't run on the same Node.
+			NodeAffinityPriority: 
+				Prioritizes nodes according to node affinity scheduling preferences indicated in PreferredDuringSchedulingIgnoredDuringExecution. You can read more about this in Assigning Pods to Nodes.
+			TaintTolerationPriority: 
+				Prepares the priority list for all the nodes, based on the number of intolerable taints on the node. This policy adjusts a node's rank taking that list into account.
+			ImageLocalityPriority: 
+				Favors nodes that already have the container images for that Pod cached locally.
+			ServiceSpreadingPriority: 
+				For a given Service, this policy aims to make sure that the Pods for the Service run on different nodes. It favours scheduling onto nodes that don't have Pods for the service already assigned there. The overall outcome is that the Service becomes more resilient to a single Node failure.
+
+			EqualPriority: 
+				Gives an equal weight of one to all nodes.
+
+			EvenPodsSpreadPriority: Implements preferred pod topology spread constraints.
+
+What's next
+
+		How can this scheduling be done?
+			https://kubernetes.io/docs/reference/scheduling/config/
+		
+
+	Manual Scheduling
+	-----------------
+	You can constrain a Pod to only be able to run on particular Node(s), or to prefer to run on particular nodes. There are several ways to do this, and the recommended approaches all use label selectors to make the selection. Generally such constraints are unnecessary, as the scheduler will automatically do a reasonable placement (e.g. spread your pods across nodes, not place the pod on a node with insufficient free resources, etc.) but there are some circumstances where you may want more control on a node where a pod lands, for example to ensure that a pod ends up on a machine with an SSD attached to it, or to co-locate pods from two different services that communicate a lot into the same availability zone.
+	
+	D:\PraiseTheLord\HSBGInfotech\Others\vilas\docker-k8s\yaml\cka\multipleScheulers
+	D:\PraiseTheLord\HSBGInfotech\Others\vilas\docker-k8s\yaml\taintsAndTolerations
+
+##########################################################################################################
+	• Understand deployments and how to perform rolling update and rollbacks
+
+Question:  Rolling update and rollbacks deployments — create a deployment named nginx with the image nginx:1.14.2. Now rollout the image to nginx:1.16.1. Then again rollback the deployment to use the previous image.
+kubectl create deployment nginx --image=nginx:1.14.2
+kubectl set image deployment/nginx-deployment nginx=nginx:1.16.1 --record
+kubectl rollout history deployment.v1.apps/nginx
+kubectl rollout undo deployment.v1.apps/nginx
+
+
+Tips:
+- Do not delete and recreate deployment with new image. That would not display any rollout history and would be considered incorrect.
+
+
+Question:  create a pod webapp using the nginx image with label run=nginx	
+	kubectl run webapp --image=nginx --labels run=nginx
+	
+	
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~	
+Question: Create a deployment.yaml file to create a deployment named busybox-deployment with busybox:1.28 image to sleep for 4800 seconds and 3 replicas.
+kubectl create deployment busybox-deployment --image=busybox:1.28 --dry-run=client -o yaml > deployment.yaml
+
+- Now make the required changes in the deployment.yaml
+# cat deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:  
+  labels:    
+    app: busybox-deployment  
+    name: busybox-deployment
+spec:  
+  replicas: 3 
+  selector:    
+    matchLabels:      
+      app: busybox-deployment  
+  template:    
+    metadata:      
+      labels:        
+        app: busybox-deployment    
+    spec:      
+      containers:      
+        - image: busybox:1.28        
+          name: busybox        
+          command:          
+            - "sleep"          
+            - "4800"
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	
+##########################################################################################################	
+	• Use ConfigMaps and Secrets to configure applications
+	
+	ConfigMaps allow you to decouple configuration artifacts 
+		from image content to keep containerized applications portable. 
+
+	Use the kubectl create configmap command 
+		to create ConfigMaps from 
+			directories, 
+			files, or 
+			literal values:
+
+		kubectl create configmap <map-name> <data-source>
+
+		where 
+			<map-name> is the name you want to assign to the ConfigMap and 
+			<data-source> is the directory, file, or literal value to draw the data from. 
+			
+
+		When you are creating a ConfigMap based on a file, 
+			the key in the <data-source> defaults to the basename of the file, 
+			and the value defaults to the file content.
+
+		You can use kubectl describe or kubectl get to retrieve information about a ConfigMap.
+
+	D:\PraiseTheLord\HSBGInfotech\Others\vilas\docker-k8s\yaml\configmap	
+
+##########################################################################################################	
+	• Know how to scale applications
+	
+Question: Scale the deployment busybox-deployment to run 6 replicas of the pod
+kubectl scale deployment busybox-deployment --replicas=6
+
+#Refer kubectl create deployment busybox-deployment --image=busybox:1.2 section for the creation of deployment.
+
+
+
+Question: Multi-container Pods- create a multi container pod named multiapp with nginx and redis image:
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: multiapp
+  name: multiapp
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+  - image: redis
+    name: redis
+	
+	
+Question: create a pod named myapp which has an init container that runs a busybox:1.28 image for 1000 seconds and when the init container is ready the pod will run an app container with nginx image.
+
+kubectl run app --image=nginx --dry-run=client -o yaml > init.yaml
+-> Now edit the init.yaml to include the init container definition.
+apiVersion: v1
+kind: Pod
+metadata:  
+  labels: 
+    run: app  
+  name: app
+spec:  
+  initContainers:  
+    - name: myapp-container    
+      image: busybox:1.28    
+      command:      
+        - "sleep"      
+        - "1000"  
+  containers:  
+    - image: nginx    
+      name: nginx
+	  
+	  
+Tips:
+- the pods would be in init state for 1000 seconds hence do not be worried if you do not get the pod in running state
+
+	  
+
+##########################################################################################################	
+	• Understand the primitives used to create robust, self-healing, application deployments
+
+	ReplicationController
+	Replicaset
+	Deployments
+	Statefulsets
+	Daemonset
+
+##########################################################################################################	
+	• Understand how resource limits can affect Pod scheduling
+	https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#how-pods-with-resource-requests-are-scheduled
+	
+	When you specify a Pod, 
+		optionally specify how much of each resource a Container needs. 
+		The most common resources to specify are CPU and memory (RAM); there are others.
+
+	Resource Request
+	----------------
+	specify resource request 
+		for Containers in a Pod, 
+	scheduler uses it to decide the 
+		node for the Pod 
+			
+	Resource Limit
+	--------------
+	specify resource limit 
+			for a Container, 
+	the kubelet enforces those limits 
+		running container is 
+			not allowed to use more of that resource 
+				than the limit you set. 
+	kubelet reserves at least the request amount of that system resource 
+		specifically for that container to use.
+	
+	Requests Vs limits
+	-------------------
+	Similarities
+	------------
+		1. Both are specified for a Pod.
+	
+	
+	
+	
+	Limit without Request
+		2. If Container specifies memory limit and not memory request
+			Kubernetes automatically assigns a memory request that matches the limit. 
+		3. If a Container specifies CPU limit and not specify a CPU request, 
+			Kubernetes automatically assigns a CPU request that matches the limit.
+
+	
+	
+	Request	
+	-------
+		1. Scheduler use this to decide the Node
+			
+		2. Pod's are allowed to go beyond the Request 
+			if there is enough resource on the Node.
+			(But a real limit)
+			
+	Limit	
+	-------
+		1. Kubelet enforce this limt 
+			(Hard limit)
+		2. Pod's are allowed to go beyond the Request 
+			if there is enough resource on the Node.
+		3. kubelet reserves at least the request amount of that system resource 
+		specifically for that container to use.
+		4. If a process in the container 
+			tries to consume exceed the limit 
+			system kernel terminates the process that attempted the allocation, 
+				with an out of memory (OOM) error.
+
+
+	Limits can be implemented 
+		1. reactively
+			system intervenes once it sees a violation
+	or 
+		by enforcement 
+			system prevents the container from ever exceeding the limit
+	Exact implementation of restrictions would vary based on the runtime.
+	
+Note: 
+	Resource Type
+	-------------
+	CPU and memory are each a resource type. 
+	A resource type has a base unit. 
+	CPU represents compute processing 
+		specified in units of Kubernetes CPUs. 
+	Memory is specified in units of bytes. 
+	
+	Kubernetes CPUs differs on providers. Refer below for details.
+	https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#meaning-of-cpu
+		 1 vCPU/Core for cloud providers 
+		 1 hyperthread on bare-metal Intel processors
+	
+	
+	Resource requests and limits of Pod and Container
+	-------------------------------------------------
+	Each Container of a Pod can specify one or more of the following:
+
+		spec.containers[].resources.limits.cpu
+		spec.containers[].resources.limits.memory
+		spec.containers[].resources.limits.hugepages-<size>
+		spec.containers[].resources.requests.cpu
+		spec.containers[].resources.requests.memory
+		spec.containers[].resources.requests.hugepages-<size>
+
+	Requests and limits 
+		can only be specified on individual Containers
+		convenient to talk about Pod resource requests and limits. 
+	A Pod resource request/limit 
+		sum of the resource requests/limits of that type for each Container in the Pod.
+
+	
+	How Pods with resource requests are scheduled
+	----------------------------------------------
+	When you create a Pod, 
+		Kubernetes scheduler selects a node for the Pod to run on. 
+		Each node has a maximum capacity for each of the resource types: 
+			the amount of 
+			CPU 
+			memory it can provide for Pods. 
+	The scheduler ensures that, 
+		for each resource type, 
+		sum of the resource requests of the scheduled Containers is 
+			less than the capacity of the node. 
+		N.B: 
+		The check for resource can even when the usage is less.
+		This is because process can reserve resource (CPU/memory) while not using it.
+		e.g. java can start with 5GB perm gen while using only 100 MB.
+
+		How Pods with resource limits are run
+		-------------------------------------
+		When the kubelet starts a Container of a Pod, 
+			it passes the CPU and memory limits to the container runtime.
+
+		When using Docker:
+			The spec.containers[].resources.requests.cpu 
+				is converted to its core value, 
+				which is potentially fractional, and multiplied by 1024. 
+				The greater of this number or 2 is used as the value of the --cpu-shares flag in the docker run command.
+
+		The 
+			spec.containers[].resources.limits.cpu is converted to its millicore value and multiplied by 100. 
+			The resulting value is the total amount of CPU time that a container can use every 100ms. 
+			A container cannot use more than its share of CPU time during this interval.
+
+		Note: The default quota period is 100ms. The minimum resolution of CPU quota is 1ms.
+		The spec.containers[].resources.limits.memory is converted to an integer, and used as the value of the --memory flag in the docker run command.
+
+		If a Container exceeds its memory limit, it might be terminated. If it is restartable, the kubelet will restart it, as with any other type of runtime failure.
+
+		If a Container exceeds its memory request, it is likely that its Pod will be evicted whenever the node runs out of memory.
+
+		A Container might or might not be allowed to exceed its CPU limit for extended periods of time. However, it will not be killed for excessive CPU usage.
+
+		To determine whether a Container cannot be scheduled or is being killed due to resource limits, see the Troubleshooting section.
+
+		Monitoring compute & memory resource usage
+		The resource usage of a Pod is reported as part of the Pod status.
+
+		If optional tools for monitoring are available in your cluster, then Pod resource usage can be retrieved either from the Metrics API directly or from your monitoring tools.
+
+	
+##########################################################################################################	
+	• Awareness of manifest management and common templating tools
+	
+	D:\PraiseTheLord\HSBGInfotech\Others\vilas\docker-k8s\yaml\resourceAndLimit\
+##########################################################################################################
+
+20% - Services & Networking
+##########################################################################################################
+	• Understand host networking configuration on the cluster nodes
+	
+	
+	References: 
+https://sookocheff.com/post/kubernetes/understanding-kubernetes-networking-model/
+
+			
+			
+			Written in 2018
+			---------------
+
+
+Kubernetes 
+	built to run distributed systems over a cluster of machines. 
+	Distributed: Networking a central and necessary component of Kubernetes deployment
+		understanding the Kubernetes networking model will allow you to correctly 
+			run, 
+			monitor and 
+			troubleshoot 
+			your applications running on Kubernetes.
+
+	
+	The Kubernetes Networking Model
+	-------------------------------
+	Kubernetes makes opinionated choices about how Pods are networked. 
+	Kubernetes dictates the following requirements on any networking implementation:
+		1. All Pods can communicate with all other Pods without using network address translation (NAT).
+		2. All Nodes can communicate with all Pods without NAT.
+		3. The IP that a Pod sees itself as is the same IP that others see it as.
+		
+	So four distinct networking problems needs to be solved for this:
+		1. Container-to-Container networking
+		2. Pod-to-Pod networking
+		3. Pod-to-Service networking
+		4. Internet-to-Service networking
+
+
+
+Network Namespace
+-----------------
+In Linux, 
+	each running process communicates within a network namespace 
+		that provides a logical networking stack with its own routes, firewall rules, and network devices. 
+	i.e. a network namespace provides a brand new network stack for all the processes within the namespace.
+
+	create network namespaces - ns1
+		$ ip netns add ns1
+
+	When the namespace is created
+		a mount point for it is created under 
+			/var/run/netns 
+			(Default this folder may not be present as there are no n/w ns)
+						
+		allowing the namespace to persist even if there is no process attached to it.
+
+	list available namespaces by listing all the mount points under /var/run/netns, or by using the ip command.
+		$ ls /var/run/netns
+			ns1
+		or 
+		$ ip netns
+			ns1
+	The root network namespace.
+	--------------------------
+	Linux assigns every process to the root network namespace to provide access to the external world
+
+
+	In terms of Docker constructs
+		Pod is modelled as a group of Docker containers that share a network namespace. 
+		Containers within a Pod all have the same IP address and port space 
+			assigned through the network namespace assigned to the Pod
+				(docker's netns is not found on /var/run/netns)
+		Can find each other via localhost 
+			since they reside in the same namespace. 
+		We can create a network namespace for each Pod on a virtual machine
+		This is implemented, using Docker
+			as a “Pod container” which holds the network namespace open while “app containers” 
+				(the things the user specified) 
+				join that namespace with Docker’s –net=container: function. 
+		
+		How is that possible?
+			https://blog.mikesir87.io/2019/03/sharing-network-namespaces-in-docker/
+			
+	Applications within a Pod also have access to shared volumes, 
+	which are defined as part of a Pod and are made available to be mounted into each application’s filesystem.
+
+
+	Pod-to-Pod Networking
+	---------------------
+	Every Pod has a real IP address 
+	Pod communicates with other Pods using that IP address. 
+	
+	How Kubernetes enables Pod-to-Pod communication using real IPs?
+	Whether the Pod is deployed on the same physical Node or different Node in the cluster?
+	
+	Pods that reside on the same machine: the Pod’s perspective
+	-----------------------------------------------------------
+	It exists in its own Ethernet namespace 
+		Needs to communicate with other network namespaces on the same Node. 
+	
+	Namespaces can be connected using a Linux Virtual Ethernet Device called veth pair 
+	
+	Veth pair:
+		To connect Pod namespaces
+			we can assign one side of the veth pair to the root network namespace
+			and the other side to the Pod’s network namespace. 
+		Each veth pair works like a patch cable
+			connecting the two sides and allowing traffic to flow between them. 
+		This setup can be replicated for as many Pods as we have on the machine. 
+		Figure 4 shows veth pairs connecting each Pod on a VM to the root namespace.
+
+
+	Now 
+		Pods: 
+			have their one network namespace 
+			they have their own Ethernet device and IP address
+			they are connected to the root namespace for the Node. 
+	
+	Network Bridge
+		Now, we want the Pods to talk to each other through the root namespace
+			for this we use a network bridge.
+
+	A Linux Ethernet bridge 
+		Virtual Layer 2 networking device 
+		Used to unite two or more network segments
+		Work transparently to connect two networks together. 
+		The bridge operates by 
+			maintaining a forwarding table between sources and destinations 
+			Examines the destination of the data packets that travel through it 
+			Decides whether or not to pass the packets to other network segments connected to the bridge. 
+			
+			The bridging code 
+				decides whether to bridge data or 
+				to drop it by looking at the MAC-address 
+					unique to each Ethernet device in the network.
+
+	
+	Bridges implement the ARP protocol 
+		discover the link-layer MAC address associated with a given IP address. 
+		
+		When a data frame is received at the bridge, 
+			bridge broadcasts the frame out to all connected devices (except the original sender) 
+			device that responds to the frame is stored in a lookup table. 
+			Future traffic with the same IP address uses the 
+			lookup table to discover the correct MAC address to forward the packet to.
+
+	4.1 Life of a packet: Pod-to-Pod, same Node
+	-------------------------------------------
+	Given the network namespaces that isolate each Pod to their own networking stack, 
+		virtual Ethernet devices that connect each namespace to the root namespace, 
+		bridge that connects namespaces together, we can send traffic between Pods on the same Node. 
+		
+	In Figure 6, 
+		Pod 1 sends a packet to its own Ethernet device eth0 
+			available as the default device. 
+			For Pod 1, eth0 is connected via a virtual Ethernet device to the root namespace, veth0 (1). 
+			The bridge cbr0 is configured with veth0 a network segment attached to it. 
+			Once the packet reaches the bridge, 
+				the bridge resolves the correct network segment to send the packet to — 
+					veth1 using the ARP protocol. 
+		When the packet reaches the virtual device veth1, 
+			it is forwarded directly to Pod 2’s namespace 
+			eth0 device within that namespace. 
+		Throughout this traffic flow, 
+			each Pod is communicating only with eth0 on localhost 
+			traffic is routed to the correct Pod. 
+			The development experience for using the network is the default behaviour that a developer would expect.
+
+Kubernetes networking model dictates 
+	Pods must be reachable by their IP address across Nodes. 
+
+i.e, 
+	The IP address of a Pod is always visible to other Pods in the network
+	Each Pod views its own IP address as the same as how other Pods see it
+	
+	Routing traffic between Pods on different Nodes
+	-----------------------------------------------
+
+		Life of a packet: Pod-to-Pod, across Nodes
+		------------------------------------------
+
+	Kubernetes networking model:
+		Pod IPs are reachable across the network
+			how? 
+				Each implementation can decide.
+				
+				
+			but some patterns have been established to make this easier.
+
+Generally
+	Every Node in your cluster is assigned a CIDR block 
+		specifying the IP addresses available to Pods running on that Node. 
+		
+	Once traffic destined for the CIDR block 
+		reaches the Node 
+			it is the Node’s responsibility to forward traffic to the correct Pod. 
+			
+
+Figure 7 
+	the destination Pod (highlighted in green) is on a different Node from the source Pod (higlighted in blue). 
+	The packet begins by being sent through Pod 1’s Ethernet device which is paired with the virtual Ethernet device in the root namespace 
+	Ultimately, the packet ends up at the root namespace’s network bridge 
+	
+	ARP will fail at the bridge because there is no device connected to the bridge with the correct MAC address for the packet. 
+		<Vilas: ARP defines the rout at the bridge>
+	On failure, 
+		the bridge sends the packet out the default route — 
+			the root namespace’s eth0 device. 
+			At this point the route leaves the Node and enters the network 
+	We assume for now that the network can route the packet to the correct Node based on the CIDR block assigned to the Node 
+	The packet enters the root namespace of the destination Node (eth0 on VM 2), 
+		it is routed through the bridge to the correct virtual Ethernet device 
+	Route completes by flowing through the virtual Ethernet device’s pair residing within Pod 4’s namespace 
+	Generally speaking, 
+		each Node knows how to deliver packets to Pods that are running within it. 
+	Once a packet reaches a destination Node, 
+		packets flow the same way they do for routing traffic between Pods on the same Node.
+
+	
+	
+	We conveniently side-stepped how to configure the network to route traffic for Pod IPs to the correct Node that is responsible for those IPs. 
+	This is network specific, 
+		but looking at a specific example will provide some insight into the issues involved. 
+	With AWS, 
+		Amazon maintains a container networking plugin for Kubernetes 
+		This allows Node to Node networking to operate within an Amazon VPC environment using
+			[Container Networking Interface (CNI) plugin] 
+			(https://github.com/aws/amazon-vpc-cni-k8s).
+
+	
+	Container Networking Interface (CNI) 
+	------------------------------------
+	Provides a common API for connecting containers to the outside network. 
+	Pod can communicate with the network using IP addresses
+	All CNI plugin should do this.
+	
+--------------------------------------------------------------------------------------------------
+			AWS	Specific
+
+	AWS also implements the plugin meeting the k8s expectation along with providing the following capabilities.
+		secure 
+		manageable environment 
+		through the existing 
+		VPC, 
+		IAM, and 
+		Security Group functionality 
+		provided by AWS. 
+		
+		Done using elastic network interfaces.
+
+
+	In EC2, 
+		each instance is bound to an elastic network interface (ENI) 
+		All ENIs are connected within a VPC 
+		ENIs are able to reach each other without additional effort. 
+		By default, 
+			each EC2 instance is deployed with a single ENI, 
+			but you are free to create multiple ENIs and deploy them to EC2 instances. 
+		The AWS CNI plugin for Kubernetes leverages this flexibility by creating a new ENI for each Pod deployed to a Node. 
+		ENIs in a VPC are already connected within the existing AWS infrastructure
+			this allows each Pod’s IP address to be natively addressable within the VPC. 
+		When the CNI plugin is deployed to the cluster, 
+			each Node (EC2 instance) creates multiple elastic network interfaces and allocates IP addresses to those instances
+				forming a CIDR block for each Node. 
+		When Pods are deployed
+			small binary deployed to the Kubernetes cluster as a DaemonSet receives any requests to add a Pod 
+				to the network from the Nodes local kubelet process. 
+			This binary picks an available IP address from the Node’s available pool of ENIs and assigns it to the Pod 
+				by wiring the virtual Ethernet device and bridge within the Linux kernel as described when networking Pods within the same Node. 
+				With this in place, Pod traffic is routeable across Nodes within the cluster.
+--------------------------------------------------------------------------------------------------
+
+
+		Pod-to-Service Networking
+		-------------------------
+	Pod's can go down and come with with a different IP address.
+
+	Pod IP addresses 
+		not durable 
+		will appear and disappear in response to 
+			scaling out or in, 
+			application crashes, 
+			Node reboots. 
+	Services solves this.
+	
+	A Kubernetes Service 
+	--------------------
+		manages the state of a set of Pods, 
+		allowing you to track a set of Pod IP addresses 
+		that are dynamically changing over time. 
+		
+	Services act as an abstraction over Pods 
+	Assign a single virtual IP address to a group of Pod IP addresses. 
+	
+	Any traffic addressed to the virtual IP of the Service 
+		will be routed to the set of Pods that are associated with the virtual IP. 
+	This allows the set of Pods associated with a Service to change at any time 
+		clients only need to know the Service’s virtual IP, which does not change.
+
+
+		When creating a new Kubernetes Service
+		--------------------------------------
+		A new virtual IP (also known as a cluster IP) is created on your behalf. 
+		Anywhere within the cluster, 
+			traffic addressed to the virtual IP will be load-balanced to the set of backing Pods associated with the Service. 
+		Effectively, 
+			Kubernetes automatically creates and maintains a distributed in-cluster load balancer 
+				that distributes traffic to a Service’s associated healthy Pods. 
+
+		5.1 netfilter and iptables
+		--------------------------
+		To perform load balancing within the cluster
+			Kubernetes relies on the networking framework built in to Linux 
+				netfilter. 
+			Netfilter is a framework provided by Linux 
+			That allows various networking-related operations to be implemented in the form of customized handlers. 
+			Netfilter offers various functions and operations for 
+				packet filtering
+				NAT ing
+				port translation
+			provides the functionality required for directing packets through a network
+			prohibit packets from reaching sensitive locations within a computer network.
+
+		iptables is a user-space program 
+			providing a table-based system for defining rules for 
+				manipulating and transforming packets using the netfilter framework.
+				
+			Role of kube-proxy
+			------------------
+			In Kubernetes, 
+				Iptables rules are configured by the kube-proxy controller 
+				Watches the Kubernetes API server for changes. 
+				
+				When a change to a Service or Pod 
+					updates the virtual IP address of the Service or 
+					IP address of a Pod
+				iptables rules are updated to correctly route traffic directed at a Service to a backing Pod. 
+				
+				The iptables rules watch for traffic destined for a Service’s virtual IP 
+					on a match, 
+					a random Pod IP address is selected from the set of available Pods 
+				iptables rule changes the packet’s destination IP address 
+					from the Service’s virtual IP 
+					to the IP of the selected Pod. 			
+				As Pods come up or go down, 
+					the iptables ruleset is updated 
+						to reflect the changing state of the cluster. 
+				Indirectly
+					iptables has done load-balancing on the machine 
+						to take traffic directed to a service’s IP to an actual pod’s IP.
+
+			
+				On the return path, 
+					the IP address is coming from the destination Pod. 
+				In this case iptables again rewrites the IP header to replace the Pod IP 
+					with the Service’s IP so that the Pod believes 
+						it has been communicating solely with the Service’s IP the entire time.
+
+		5.2 IPVS
+		---------
+		Since v 1.11 
+			Kubernetes includes a second option for in-cluster load balancing: 
+				IPVS. 
+			IPVS (IP Virtual Server) 
+				Built on top of netfilter 
+				Implements transport-layer load balancing as part of the Linux kernel. 
+			IPVS is incorporated into the LVS (Linux Virtual Server)
+			It runs on a host
+			Acts as a load balancer in front of a cluster of real servers. 
+			IPVS can direct requests for TCP - and UDP-based services 
+				to the real servers, 
+				make services of the real servers appear as virtual services 
+					on a single IP address. 
+			This makes IPVS a natural fit for Kubernetes Services.
+
+		While declaring Kubernetes Service
+			we can decide to use in-cluster load balancing using
+				iptables or 
+				IPVS. 
+			IPVS is specifically designed for load balancing 
+			Uses more efficient data structures (hash tables)
+			Allowing for almost unlimited scale compared to iptables. 
+		
+		When creating a Service load balanced with IPVS
+			three things happen: 
+				a dummy IPVS interface is created on the Node, 
+				Service’s IP address is bound to the dummy IPVS interface
+				IPVS servers are created for each Service IP address.
+
+		Currently round robin is the default load-balancing. 
+		This can be modified using --ipvs-scheduler
+			https://kubernetes.io/blog/2018/07/09/ipvs-based-in-cluster-load-balancing-deep-dive/
+			
+		
+		Life of a packet through an in-cluster load-balanced Service
+		------------------------------------------------------------
+
+		5.3 Life of a packet: Pod to Service
+		------------------------------------
+		Figure 8. 
+		When routing a packet between a Pod and Service
+			The packet leaves the Pod through the eth0 interface attached to the Pod’s network namespace 
+			Then it travels through the virtual Ethernet device to the bridge 
+			The ARP protocol running on the bridge does not know about the Service 
+				so it transfers the packet out through the default route — eth0
+			Here, something different happens. 
+		
+		Before being accepted at eth0, 
+			the packet is filtered through iptables. 
+		After receiving the packet, 
+			iptables uses the rules installed on the Node by kube-proxy 
+				in response to Service or Pod events 
+				to rewrite the destination of the packet 
+					from the Service IP 
+					to a specific Pod IP 
+		The packet is now destined to reach Pod 4 rather than the Service’s virtual IP. 
+		
+		The Linux kernel’s conntrack utility is leveraged by iptables to 
+			remember the Pod choice that was made so future traffic is routed to the same Pod 
+				(barring any scaling events). 
+		In essence, 
+			iptables has done in-cluster load balancing 
+				directly on the Node. 
+		Traffic then flows to the Pod 
+			using the Pod-to-Pod routing we’ve already examined section 5.
+
+		5.4 Life of a packet: Service to Pod
+		------------------------------------
+		Figure 9. 
+		The Pod that receives this packet will respond, 
+			identifying the source IP as its own and 
+			the destination IP as the Pod that originally sent the packet 
+		Upon entry into the Node
+			the packet flows through iptables, 
+				which uses conntrack to remember the choice it previously made 
+				Rewrite the source of the packet to be the Service’s IP instead of the Pod’s IP 
+		Packet flows through the bridge to the virtual Ethernet device 
+			paired with the Pod’s namespace
+				to the Pod’s Ethernet device as we’ve seen before.
+
+		5.5 Using DNS
+		-------------
+		Kubernetes can optionally use DNS to avoid having to hard-code a Service’s cluster IP address into your application.
+		-------------------------------------------------------------------------------------------------------------------
+		Kubernetes DNS runs as a regular Kubernetes Service 
+			that is scheduled on the cluster. 
+		It configures the kubelets running on each Node 
+			so that containers use the DNS Service’s IP to resolve DNS names. 
+		Every Service defined in the cluster (including the DNS server itself) 
+			is assigned a DNS name. 
+		DNS records resolve DNS names to 
+			the cluster IP of the Service or 
+			the IP of a POD, 
+			depending on your needs. 
+			SRV records are used to specify particular named ports for running Services.
+
+		A DNS Pod consists of three separate containers:
+		-----------------------------------------------
+		kubedns/Coredns: 
+			watches the Kubernetes master for changes in Services and Endpoints
+			maintains in-memory lookup structures to serve DNS requests.
+
+		dnsmasq: 
+			adds DNS caching to improve performance.
+
+		sidecar: 
+			provides a single health check endpoint to perform healthchecks for dnsmasq and kubedns.
+
+		The DNS Pod 
+			deployed as a Kubernetes Service with a static cluster IP 
+			Passed to each running container at startup 
+				so that each container can resolve DNS entries. 
+		DNS entries are resolved through the kubedns system 
+			maintains in-memory DNS representations. 
+		etcd is the backend storage system 
+			for cluster state, 
+		kubedns uses a library that converts 
+			etcd key-value stores to 
+			DNS entires to rebuild the state of the in-memory DNS lookup structure when necessary.
+
+		-----------------------------------------------------------------------------------------
+		CoreDNS works similarly to kubedns but is built with a plugin architecture that makes it more flexible. 
+		Currently: CoreDNS is the default DNS implementation for Kubernetes.
+		-----------------------------------------------------------------------------------------
+
+
+	6 Internet-to-Service Networking
+	--------------------------------
+
+	How to do the following?
+	
+		1. Getting traffic from a Kubernetes Service out to the Internet
+		2. Getting traffic from the Internet to your Kubernetes Service. 
+		
+		This section deals with each of these concerns in turn.
+
+		6.1 Egress — Routing traffic to the Internet
+		--------------------------------------------
+
+		Routing traffic from a Node to the public Internet 
+			is network specific 
+		Depends on how your network is configured to publish traffic. 
+		
+--------------------------------------------------------------------------------------------------
+		AWS specific
+
+		for e.g. AWS VPC to discuss any specific details.
+
+In AWS
+	a Kubernetes cluster runs within a VPC
+	Every Node is assigned a private IP address 
+		accessible from within the Kubernetes cluster. 
+	To make traffic accessible from outside the cluster
+		you attach an Internet gateway to your VPC. 
+	The Internet gateway serves two purposes
+		provide a target in your VPC route tables for traffic that can be routed to the Internet
+		perform (NAT) for any instances that have been assigned public IP addresses
+			NATing is responsible for changing the Node’s 
+				internal IP address 
+					that is private to the cluster 
+				to an external IP address 
+					that is available in the public Internet.
+
+	With Internet gateway
+		VMs are free to route traffic to the Internet. 
+		Unfortunately
+			Pods have their own IP address 
+				not the same as Node IP address
+			
+			NAT translation at the Internet gateway only works with VM IP 
+			the gateway is not container aware. 
+	
+	
+--------------------------------------------------------------------------------------------------
+	How Kubernetes solves this problem using iptables (again).
+	----------------------------------------------------------
+	Since the solution is in k8s - it should be generic.
+	
+	6.1.1 Life of a packet: Node to Internet
+	----------------------------------------
+	Packet originates at the Pod’s namespace
+	Travels through the veth pair connected to the root namespace
+	Once in the root namespace, 
+		the packet moves from the bridge to the default device 
+			since the IP on the packet does not match any network segment connected to the bridge. 
+	Before reaching the root namespace’s Ethernet device 
+		iptables mangles the packet 
+	In this case, the source IP address of the packet is a Pod, 
+		if we keep the source as a Pod 
+		the Internet gateway will reject it 
+		because the gateway NAT only understands IP addresses 
+			that are connected to VMs. 
+		solution: iptables perform a source NAT 
+			changing the packet source — 
+			packet appears to be coming from the VM 
+			and not the Pod. 
+		With the correct source IP in place, 
+			the packet can now leave the VM 
+			reach the Internet gateway
+		The Internet gateway will do another NAT rewriting the source IP from a VM internal IP to an external IP. 
+		Packet will reach the public Internet 
+		On the way back, 
+			the packet follows the same path and any source IP mangling is undone 
+		each layer of the system 
+			receives the IP address 
+			it understands: VM-internal at the Node or VM level, and a Pod IP within a Pod’s namespace.
+
+Figure 10. Routing packets from Pods to the Internet.
+----------------------------------------------------
+6.2 Ingress — Routing Internet traffic to Kubernetes
+----------------------------------------------------
+Ingress — 
+	getting traffic into your cluster — 
+	is a surprisingly tricky problem to solve. 
+ 
+This is specific to the network you are running, 
+	but in general, 
+	Ingress is divided into two solutions that work on different parts of the network stack: 
+		1. Service LoadBalancer 
+		2. Ingress controller.
+
+	6.2.1 Layer 4 Ingress: LoadBalancer
+	-----------------------------------
+	When you create a Kubernetes Service you can optionally specify a LoadBalancer to go with it. 
+	The implementation of the LoadBalancer is provided by a cloud controller 
+		knows how to create a load balancer for your service. 
+	Once your Service is created, 
+		it will advertise the IP address for the load balancer. 
+	As an end user, 
+		you can start directing traffic to the load balancer 
+			to begin communicating with your Service.
+
+------------------------------------------------------------
+	With AWS, 
+		load balancers are aware of Nodes 
+			within their Target Group and 
+			will balance traffic throughout all of the Nodes in the cluster. 
+		Once traffic reaches a Node, 
+			the iptables rules previously installed throughout the cluster for your Service 
+				will ensure that traffic reaches the 
+					Pods for the Service you are interested in.
+------------------------------------------------------------
+	6.2.2 Life of a packet: LoadBalancer to Service
+	-----------------------------------------------
+
+	Once you deploy your service, 
+		a new load balancer will be created for you 
+			by the cloud provider you are working with 
+			1. Since load balancer is not container aware, 
+				once traffic reaches the load-balancer 
+					it is distributed throughout the VMs that make up your cluster 
+			2. iptables rules on each VM will 
+				direct incoming traffic from the load balancer to the correct Pod 
+			3 These are the same IP tables rules that were put in place during Service creation and discussed earlier. 
+				The response from the Pod to the client will 
+					return with the Pod’s IP, 
+					but the client needs to have the load balancer’s IP address. 
+				iptables and conntrack is used to 
+					rewrite the IPs correctly on the return path, 
+					as we saw earlier.
+
+
+	The following diagram shows a network load balancer 
+		in front of three VMs 
+		that host your Pods. 
+	Incoming traffic 
+		(1) is directed at the load balancer for your Service. 
+			Once the load balancer receives the packet 
+		(2) it picks a VM at random. 
+		(3). Here, the iptables rules running on the VM will direct the packet to the correct Pod 
+			using the internal load balancing rules 
+			installed into the cluster using kube-proxy. 
+			iptables does the correct NAT and 
+			forwards the packet on to the correct Pod 
+			(4).
+
+internet-to-service
+Figure 11. Packets sent from the Internet to a Service.
+6.2.3 Layer 7 Ingress: Ingress Controller
+Layer 7 network Ingress operates on the HTTP/HTTPS protocol range of the network stack and is built on top of Services. The first step to enabling Ingress is to open a port on your Service using the NodePort Service type in Kubernetes. If you set the Service’s type field to NodePort, the Kubernetes master will allocate a port from a range you specify, and each Node will proxy that port (the same port number on every Node) into your Service. That is, any traffic directed to the Node’s port will be forwarded on to the service using iptables rules. This Service to Pod routing follows the same internal cluster load-balancing pattern we’ve already discussed when routing traffic from Services to Pods.
+
+To expose a Node’s port to the Internet you use an Ingress object. An Ingress is a higher-level HTTP load balancer that maps HTTP requests to Kubernetes Services. The Ingress method will be different depending on how it is implemented by the Kubernetes cloud provider controller. HTTP load balancers, like Layer 4 network load balancers, only understand Node IPs (not Pod IPs) so traffic routing similarly leverages the internal load-balancing provided by the iptables rules installed on each Node by kube-proxy.
+
+Within an AWS environment, the ALB Ingress Controller provides Kubernetes Ingress using Amazon’s Layer 7 Application Load Balancer. The following diagram details the AWS components this controller creates. It also demonstrates the route Ingress traffic takes from the ALB to the Kubernetes cluster.
+
+ingress-controller-design.png
+Figure 12. Design of an Ingress Controller.
+Upon creation, (1) an Ingress Controller watches for Ingress events from the Kubernetes API server. When it finds Ingress resources that satisfy its requirements, it begins the creation of AWS resources. AWS uses an Application Load Balancer (ALB) (2) for Ingress resources. Load balancers work in conjunction with Target Groups that are used to route requests to one or more registered Nodes. (3) Target Groups are created in AWS for each unique Kubernetes Service described by the Ingress resource. (4) A Listener is an ALB process that checks for connection requests using the protocol and port that you configure. Listeners are created by the Ingress controller for every port detailed in your Ingress resource annotations. Lastly, Target Group Rules are created for each path specified in your Ingress resource. This ensures traffic to a specific path is routed to the correct Kubernetes Service (5).
+
+6.2.4 Life of a packet: Ingress to Service
+The life of a packet flowing through an Ingress is very similar to that of a LoadBalancer. The key differences are that an Ingress is aware of the URL’s path (allowing and can route traffic to services based on their path), and that the initial connection between the Ingress and the Node is through the port exposed on the Node for each service.
+
+Let’s look at how this works in practice. Once you deploy your service, a new Ingress load balancer will be created for you by the cloud provider you are working with (1). Because the load balancer is not container aware, once traffic reaches the load-balancer it is distributed throughout the VMs that make up your cluster (2) through the advertised port for your service. iptables rules on each VM will direct incoming traffic from the load balancer to the correct Pod (3) — as we have seen before. The response from the Pod to the client will return with the Pod’s IP, but the client needs to have the load balancer’s IP address. iptables and conntrack is used to rewrite the IPs correctly on the return path, as we saw earlier.
+
+ingress-to-service.gif
+Figure 13. Packets sent from an Ingress to a Service.
+One benefit of Layer 7 load-balancers are that they are HTTP aware, so they know about URLs and paths. This allows you you to segment your Service traffic by URL path. They also typically provide the original client’s IP address in the X-Forwarded-For header of the HTTP request.
+
+	
+##########################################################################################################	
+	• Understand connectivity between Pods
+##########################################################################################################	
+	• Understand ClusterIP, NodePort, LoadBalancer service types and endpoints
+	
+Question : Services — create a service webapp-service with ClusterIP
+kubectl expose pod webapp --name=webapp-service --port=80 --type=ClusterIP
+Tips:
+- Also look into the configurations in order to create a Nodeport to access a cluster.	
+
+
+##########################################################################################################	
+	• Know how to use Ingress controllers and Ingress resources
+	https://kubernetes.io/docs/concepts/services-networking/ingress/
+	https://kubernetes.io/docs/concepts/services-networking/network-policies/
+	https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/
+	https://kubernetes.github.io/ingress-nginx/user-guide/basic-usage/
+##########################################################################################################	
+	• Know how to configure and use CoreDNS
+		https://kubernetes.io/docs/tasks/administer-cluster/coredns/
+##########################################################################################################	
+	• Choose an appropriate container network interface plugin
+	
+	https://chrislovecnm.com/kubernetes/cni/choosing-a-cni-provider/
+	https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/
+##########################################################################################################	
+
+
+
+
+10% - Storage
+##########################################################################################################
+	• Understand storage classes, persistent volumes
+##########################################################################################################	
+	• Understand volume mode, access modes and reclaim policies for volumes
+##########################################################################################################	
+	• Understand persistent volume claims primitive
+##########################################################################################################	
+	• Know how to configure applications with persistent storage
+##########################################################################################################	
+
+
+30% - Troubleshooting
+	https://kubernetes.io/docs/tasks/debug-application-cluster/	
+	
+	 kubectl describe pod
+	 kubectl get pods
+	 kubectl describe pod nginx-deployment-1006230814-6winp
+	 
+	 debugging Pending Pods 
+	 -------------------------------
+	 Events such as the ones you saw at the end of kubectl describe pod are persisted in etcd and provide high-level information on what is happening in the cluster. To list all events you can use
+
+		kubectl get events
+		
+	but you have to remember that events are namespaced. This means that if you're interested in events for some namespaced object (e.g. what happened with Pods in namespace my-namespace) you need to explicitly provide a namespace to the command:
+
+		kubectl get events --namespace=my-namespace
+		
+	or list events for all namespaces
+		kubectl get events --all-namespaces
+		
+	View the yaml of a running pod
+		kubectl get pod nginx-deployment-1006230814-6winp -o yaml
+	Verify if everything is as you expected. E.g. restartPolicy ect.
+
+	
+	debugging a down/unreachable node
+	---------------------------------
+	kubectl get nodes
+	kubectl describe node kubernetes-node-861h
+	
+	kubectl get node kubernetes-node-861h -o yaml
+	
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~	
+	Logging
+	=======
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	Application logs can help
+
+	Native functionality provided by a container engine or runtime is usually not enough for a complete logging solution. 
+	
+	For example, 
+		if a container crashes, 
+		a pod is evicted, 
+		or a node dies
+	Logs should have a separate storage and lifecycle independent of nodes, pods, or containers. 
+	This concept is called cluster-level-logging. 
+	Cluster-level logging requires a 
+		separate backend to 
+			store, 
+			analyze, and 
+			query logs. 
+	
+	Kubernetes provides NO native storage solution for log data
+	But you can integrate many existing logging solutions into your Kubernetes cluster.
+
+
+	Other 3rd party solutions are outside the scope of this training
+	
+	Basic Logging
+	-------------
+
+------------------------------------------------------
+apiVersion: v1
+kind: Pod
+metadata:
+  name: counter
+spec:
+  containers:
+  - name: count
+    image: busybox
+    args: [/bin/sh, -c,
+            'i=0; while true; do echo "$i: $(date)"; i=$((i+1)); sleep 1; done']
+------------------------------------------------------
+	kubectl apply -f https://k8s.io/examples/debug/counter-pod.yaml
+	
+	
+	see logs using
+	kubectl logs counter
+
+	How logging works?
+	------------------
+		Everything a containerized application writes to 
+			stdout and 
+			stderr is 
+				handled and redirected somewhere by a container engine. 
+		For example, the 
+			Docker container engine redirects those two streams to a logging driver, 
+				which is configured in Kubernetes to write to a file in json format.
+
+		By default, 
+			if a container restarts, 
+		kubelet keeps one terminated container with its logs. 
+		If a pod is evicted from the node, 
+			all corresponding containers are also evicted, 
+			along with their logs.
+
+		
+	Implement log rotation
+	----------------------
+	Kubernetes currently is not responsible for rotating logs
+	But deployment tool should set up a solution to address that. 
+	For example, 
+		in Kubernetes clusters, 
+		deployed by the kube-up.sh script, 
+		there is a logrotate tool configured to run each hour. 
+	
+	Container runtime can be used to rotate application's logs automatically
+		for example by using Docker's log-opt. 
+	In the kube-up.sh script, 
+		the latter approach is used for COS image on GCP, 
+		and the former approach is used in any other environment. 
+	In both cases, by default rotation is configured to take place when log file exceeds 10MB.
+
+As an example, you can find detailed information about how kube-up.sh sets up logging for COS image on GCP in the corresponding script
+
+When you run kubectl logs as in the basic logging example, 
+	the kubelet on the node handles the request and 
+	reads directly from the log file, 
+	returning the contents in the response.
+
+Note: Currently, if some external system has performed the rotation, only the contents of the latest log file will be available through kubectl logs. E.g. if there's a 10MB file, logrotate performs the rotation and there are two files, one 10MB in size and one empty, kubectl logs will return an empty response.
+
+
+	System component logs 
+	---------------------
+	There are two types of system components: 
+		those that run 
+			in a container and 
+			outside a container. 
+			
+	For example:
+
+	The Kubernetes scheduler and kube-proxy run in a container.
+
+	kubelet and container runtime do not run in containers.
+
+		On machines with systemd, 
+			the kubelet and container runtime write to journald. 
+		If systemd is not present, 
+			they write to .log files in the /var/log directory. 
+		System components inside containers always write to the /var/log directory, 
+			bypassing the default logging mechanism. 
+			They use the klog logging library. 
+			You can find the conventions for logging severity for those components in the development docs on logging.
+
+		Similarly to the container logs, system component logs in the /var/log directory should be rotated. In Kubernetes clusters brought up by the kube-up.sh script, those logs are configured to be rotated by the logrotate tool daily or once the size exceeds 100MB.
+https://docs.docker.com/engine/reference/commandline/logs/
+https://docs.docker.com/config/containers/logging/journald/		
+		
+
+	Cluster-level logging architectures 
+	-----------------------------------
+	Kubernetes does not provide a native solution for cluster-level logging, 
+		there are several common approaches you can consider. Here are some options:
+
+			Use a node-level logging agent that runs on every node.
+			Include a dedicated sidecar container for logging in an application pod.
+			Push logs directly to a backend from within an application.
+			Using a node logging agent
+	
+	Node level agent
+	----------------
+	Can implement cluster-level logging by including a node-level logging agent on each node. 
+	The logging agent is a dedicated tool that exposes logs or pushes logs to a backend. 
+	Commonly, the logging agent 
+		is a container 
+		has access to a directory with log files from all of the application containers on that node.
+	Logging agent must run on every node, 
+		it's common to implement it as either a 
+			DaemonSet replica, 
+			or a dedicated native process on the node. 
+		However the latter approacs are deprecated and highly discouraged.
+
+	Using a node-level logging agent
+		most common and 
+		encouraged approach for a Kubernetes cluster, 
+		because it creates only one agent per node, 
+		doesn't require any changes to the applications running on the node. 
+		However, node-level logging only works for applications' standard output and standard error.
+
+	Kubernetes doesn't specify a logging agent, 
+		but two optional logging agents are packaged with the Kubernetes release: 
+			1) Stackdriver Logging for use with Google Cloud Platform, 
+		and 
+			2) Elasticsearch. 
+
+
+	Using a sidecar container with the logging agent
+	-------------------------------------------------
+	Can use a sidecar container in one of the following ways:
+
+	1)	The sidecar container 
+		or 
+		streams application 
+		logs to its own stdout.
+	2)	The sidecar container runs a logging agent, 
+			which is configured to pick up logs from an application container.
+
+	Streaming sidecar container
+		Lot more information on using sidecar for logging 
+		https://kubernetes.io/docs/concepts/cluster-administration/logging/
+	
+##########################################################################################################
+	• Evaluate cluster and node logging	
+		https://kubernetes.io/docs/tasks/debug-application-cluster/debug-cluster/
+		kubectl get nodes
+		kubectl describe node
+		
+
+	Digging deeper into the cluster requires logging into the relevant machines. 
+	Here are the locations of the relevant log files. 
+	(note that on systemd-based systems, you may need to use journalctl instead)
+	 
+	journalctl -u docker
+	  
+
+Master
+	/var/log/kube-apiserver.log - API Server, responsible for serving the API
+	/var/log/kube-scheduler.log - Scheduler, responsible for making scheduling decisions
+	/var/log/kube-controller-manager.log - Controller that manages replication controllers
+
+Worker Nodes
+	/var/log/kubelet.log - Kubelet, responsible for running containers on the node
+	/var/log/kube-proxy.log - Kube Proxy, responsible for service load balancing
+
+A general overview of cluster failure modes
+-------------------------------------------
+
+Root causes:
+	VM(s) shutdown
+	Network partition within 
+		cluster, or 
+		between cluster and users
+	Crashes in Kubernetes software
+	Data loss or unavailability of persistent storage (e.g. GCE PD or AWS EBS volume)
+	Operator error, for example 
+		misconfigured Kubernetes software or application software
+
+Specific scenarios:
+	Apiserver VM shutdown or apiserver crashing
+	Results
+		unable to stop, update, or start new 
+			pods, 
+			services, 
+			replication controller
+		existing pods and services should continue to work normally, 
+			unless they depend on the Kubernetes API
+Apiserver backing storage lost
+Results
+	apiserver should fail to come up
+	kubelets will not be able to reach it but 
+		will continue to run the same pods and 
+		provide the same service proxying
+	Solution: manual recovery or recreation of apiserver state necessary before 
+		apiserver is restarted
+Supporting services 
+	(node controller, replication controller manager, scheduler, etc) 
+	VM shutdown or crashes
+		currently those may be colocated with the apiserver, and 
+			their unavailability has similar consequences as apiserver
+		they do not have their own persistent state
+Individual node (VM or physical machine) shuts down
+	Results
+		pods on that Node stop running
+Network partition
+	Results
+		partition A thinks the 
+			nodes in partition B are down; 
+		partition B thinks the apiserver is down. (Assuming the master VM ends up in partition A.)
+Kubelet software fault
+	Results
+		crashing kubelet cannot start new pods on the node
+		kubelet might delete the pods or not
+		node marked unhealthy
+		replication controllers start new pods elsewhere
+Cluster operator error
+	Results
+		loss of pods, services, etc
+		lost of apiserver backing store
+		users unable to read API
+		etc
+
+Mitigations:
+-----------
+Action: 
+	Use IaaS provider's automatic VM restarting feature for IaaS VMs
+
+Mitigates: Apiserver VM shutdown or apiserver crashing
+Mitigates: Supporting services VM shutdown or crashes
+Action: Use IaaS providers reliable storage (e.g. GCE PD or AWS EBS volume) for VMs with apiserver+etcd
+
+Mitigates: Apiserver backing storage lost
+Action: Use high-availability configuration
+
+Mitigates: Control plane node shutdown or control plane components (scheduler, API server, controller-manager) crashing
+Will tolerate one or more simultaneous node or component failures
+Mitigates: API server backing storage (i.e., etcd's data directory) lost
+Assumes HA (highly-available) etcd configuration
+Action: Snapshot apiserver PDs/EBS-volumes periodically
+
+Mitigates: Apiserver backing storage lost
+Mitigates: Some cases of operator error
+Mitigates: Some cases of Kubernetes software fault
+Action: use replication controller and services in front of pods
+
+Mitigates: Node shutdown
+Mitigates: Kubelet software fault
+Action: applications (containers) designed to tolerate unexpected restarts
+
+Mitigates: Node shutdown
+Mitigates: Kubelet software fault
+----------------------------------------------------------------------------------		
+	Unable to connect to the server: dial tcp <IP address>:443: i/o timeout
+	could be that the init --advertise-address was incorrectly specified.
+	kubectl config view
+	#verify if the server is configured correctly.
+	
+		
+##########################################################################################################	
+	• Understand how to monitor applications
+		covered in 1st part.
+##########################################################################################################	
+	• Manage container stdout & stderr logs
+	
+	A Simple Example: Containerized application logging with Kubelet
+Logging to stdout and stderr standard output streams
+The first layer of logs that can be collected from a Kubernetes cluster are those being generated by your containerized applications. The best practice is to write your application logs to the standard output (stdout) and standard error (stderr) streams. You shouldn’t worry about losing these logs, as kubelet, Kubernetes’ node agent, will collect these streams and write them to a local file behind the scenes, so you can access them with Kubernetes.
+
+
+https://sematext.com/guides/kubernetes-logging/
+https://logz.io/blog/a-practical-guide-to-kubernetes-logging/
+https://www.bluematador.com/blog/kubernetes-log-management-the-basics
+https://platform9.com/blog/kubernetes-logging-best-practices/
+https://timber.io/blog/collecting-application-logs-on-kubernetes/
+##########################################################################################################	
+	• Troubleshoot application failure
+##########################################################################################################	
+	• Troubleshoot cluster component failure
+	
+##########################################################################################################
+	• Troubleshoot networking
+##########################################################################################################
+
+
+Glossary
+
+Addon
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Addon-manager
+addon-manager manages two classes of addons with given template files in $ADDON_PATH (default /etc/kubernetes/addons/).
+
+Addons with label addonmanager.kubernetes.io/mode=Reconcile will be periodically reconciled. Direct manipulation to these addons through apiserver is discouraged because addon-manager will bring them back to the original state. In particular:
+Addon will be re-created if it is deleted.
+Addon will be reconfigured to the state given by the supplied fields in the template file periodically.
+Addon will be deleted when its manifest file is deleted from the $ADDON_PATH.
+Addons with label addonmanager.kubernetes.io/mode=EnsureExists will be checked for existence only. Users can edit these addons as they want. In particular:
+Addon will only be created/re-created with the given template file when there is no instance of the resource with that name.
+Addon will not be deleted when the manifest file is deleted from the $ADDON_PATH.
+Notes:
+
+Label kubernetes.io/cluster-service=true is deprecated (only for Addon Manager). In future release (after one year), Addon Manager may not respect it anymore. Addons have this label but without addonmanager.kubernetes.io/mode=EnsureExists will be treated as "reconcile class addons" for now.
+Resources under $ADDON_PATH need to have either one of these two labels. Otherwise it will be omitted.
+Images
+addon-manager images are pushed to k8s.gcr.io. As addon-manager is built for multiple architectures, there is an image per architecture in the format - k8s.gcr.io/kube-addon-manager-$(ARCH):$(VERSION).
+
+How to release
+The addon-manager is built for multiple architectures.
+
+Change something in the source
+Bump VERSION in the Makefile
+Bump KUBECTL_VERSION in the Makefile if required
+Build the amd64 image and test it on a cluster
+Push all images
+# Build for linux/amd64 (default)
+$ make push ARCH=amd64
+# ---> staging-k8s.gcr.io/kube-addon-manager-amd64:VERSION
+# ---> staging-k8s.gcr.io/kube-addon-manager:VERSION (image with backwards-compatible naming)
+
+$ make push ARCH=arm
+# ---> staging-k8s.gcr.io/kube-addon-manager-arm:VERSION
+
+$ make push ARCH=arm64
+# ---> staging-k8s.gcr.io/kube-addon-manager-arm64:VERSION
+
+$ make push ARCH=ppc64le
+# ---> staging-k8s.gcr.io/kube-addon-manager-ppc64le:VERSION
+
+$ make push ARCH=s390x
+# ---> staging-k8s.gcr.io/kube-addon-manager-s390x:VERSION
+If you don't want to push the images, run make or make build instead	
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+HA mode k8s documenation
+https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/high-availability/
+
+
+Other references
+https://github.com/leandrocostam/kubernetes-certified-administrator-prep-guide
+https://kubedex.com/7-5-tips-to-help-you-ace-the-certified-kubernetes-administrator-cka-exam/
+https://medium.com/devopslinks/how-to-pass-certified-kubernetes-administrator-cka-exam-on-first-attempt-36c0ceb4c9e
+https://github.com/walidshaari/Kubernetes-Certified-Administrator
+https://medium.com/@soumiyajit/certified-kubernetes-administrator-cka-1-19-preparation-guide-cebeabddb355
+
+https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands
+

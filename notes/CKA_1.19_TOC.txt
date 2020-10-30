@@ -57,15 +57,15 @@ Control Plane Components
 			cloud-controller-manager
 	Worker Node Components
 	----------------------
-		kubelet 
-		kube-proxy
-		Container runtime 
-		
-		Addons 
-			Web UI
-			Container Resource Monitoring
-			Cluster-level Logging
-		DNS 
+kubelet 
+kube-proxy
+Container runtime 
+
+Addons 
+	Web UI
+	Container Resource Monitoring
+	Cluster-level Logging
+DNS 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 				The control plane's components in details
@@ -273,7 +273,7 @@ Control Plane Components
 		
 		
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-				Worker Node Components components in details
+				Worker Node Components in details
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		Node components 
 			run on every node, 
@@ -282,14 +282,25 @@ Control Plane Components
 
 		kubelet
 			An agent that runs on each node in the cluster. 
-			It makes sure that containers are running in a Pod.
-
+			Makes sure that containers are running in a Pod.
 			Takes a set of PodSpecs that are provided through various mechanisms 
-			ensures that the containers described in those PodSpecs are running and healthy. 
+			Ensures that the containers described in those PodSpecs are running and healthy. 
+				Reports back to master
+					Node and Pod state
+				Exposes endpoint on: 10255
+			Like the movie Minion.
+				Minion gets up  Proactively contacts the master.
+			Pod liveness probe
 			The kubelet doesn't manage containers which were not created by Kubernetes.
+			Registers node with Cluster
+			Responsible for pod lifecycle
+
+
 
 		kube-proxy
-			kube-proxy is a network proxy 
+			kube-proxy is a network proxy and manages IP tables
+			Facilitates kubernetes services
+			Routing traffic to pods
 			Runs on each node in your cluster, 
 			Implements part of the Kubernetes Service concept.
 			maintains network rules on nodes. 
@@ -300,6 +311,11 @@ Control Plane Components
 
 		Container runtime
 			The container runtime is the software that is responsible for running containers.
+			Pulling images
+			Start/Stop containers
+			Pluggable
+				Most used: Docker
+				rkt: Another po
 
 		Kubernetes supports 
 			several container runtimes: 
@@ -336,6 +352,13 @@ Control Plane Components
 
 			4. Cluster-level Logging
 			A cluster-level logging mechanism is responsible for saving container logs to a central log store with search/browsing interface
+		
+		
+		Kubernetes Networking Requirements
+		----------------------------------
+		1. All Pods can communicate with each other on all nodes
+		2. All Nodes can communicate with all pods directly
+		3. No NAT'ing required.
 		
 		Nodes
 		-----
@@ -549,8 +572,22 @@ The Kubernetes scheduler ensures that there are enough resources for all the Pod
 		
 		
 		
+		Understanding kubectl commands
+		------------------------------
+		to understand pod related commands
+		
+			kubectl explain pod
+		
+		to understand pod.spec
+		
+			kubectl explain pod.spec
+			kubectl explain pod.spec.containers
+			
+			
+			
 		
 		
+	
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		Control Plane-Node Communication
 		https://kubernetes.io/docs/concepts/architecture/control-plane-node-communication/
@@ -656,7 +693,7 @@ Follow the Konnectivity service task to set up the Konnectivity service in your 
 		
 		
 		CA
-			own public and private key pairs
+			own public and private key pairs	
 			How a server can request client to 
 			3 types of servers
 				server certificates
@@ -861,6 +898,10 @@ When we have multiple contexts, we can make one of them the default.
 		/apis
 ##########################################################################################################	
 	• Use Kubeadm to install a basic cluster
+	https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
+	
+	If there is an error while installing k8s using kubeadm
+	https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/troubleshooting-kubeadm/
 ##########################################################################################################	
 	• Manage a highly-available Kubernetes cluster
 	https://www.linuxtechi.com/setup-highly-available-kubernetes-cluster-kubeadm/
@@ -1313,6 +1354,7 @@ https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/
 ##########################################################################################################	
 	• Provision underlying infrastructure to deploy a Kubernetes cluster
 		
+	https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
 	https://kubernetes.io/docs/setup/best-practices/cluster-large/
 	At v1.19, 
 		Kubernetes supports clusters with up to 5000 nodes. 
@@ -1369,7 +1411,8 @@ https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/
 				start and configure additional etcd instance
 				configure api-server to use it for storing events
 
-How to setup a separate etcd instance and store events in it????????????????????????????????????????????????????
+How to setup a separate etcd instance and store events in it?
+	WIP: https://github.com/kubernetes/kubernetes/issues/19637
 	
 			Size of master and master components
 			------------------------------------
@@ -1494,7 +1537,7 @@ Except for Heapster,
 		Minimal required CPU (cores): 2
 		Components 
 	Worker node	
-		Minimal required memory: 1.5	
+		Minimal required memory: 1
 		Minimal required CPU (cores): 1	
 
 	Recommended
@@ -1660,68 +1703,142 @@ on worker node
 
 ##########################################################################################################	
 	• Implement etcd backup and restore
+	https://brandonwillmott.com/2020/09/03/backup-and-restore-etcd-in-kubernetes-cluster-for-cka-v1-19/
+	https://www.youtube.com/watch?v=_6BMGnnySrc
+	https://www.youtube.com/watch?v=wEiRS3rgdX4
+	https://www.youtube.com/watch?v=wEiRS3rgdX4
 	https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/
+	
+	Install etcd
+	https://docs.openstack.org/install-guide/environment-etcd-rdo.html
+	
+	https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/recovery.md
+	Backup single node control plane.
+	
+	https://elastisys.com/backup-kubernetes-how-and-why/
 	https://docs.openshift.com/container-platform/4.4/backup_and_restore/backing-up-etcd.html
 	https://medium.com/velotio-perspectives/the-ultimate-guide-to-disaster-recovery-for-your-kubernetes-clusters-94143fcc8c1e
-
 	https://www.youtube.com/watch?v=wEiRS3rgdX4
-	
 	https://github.com/gardener/etcd-backup-restore
-	https://elastisys.com/backup-kubernetes-how-and-why/
+etcd install	
+	https://docs.portworx.com/reference/knowledge-base/etcd-quick-setup/
+	
+	
+	Highly available Kubernetes cluster
+	-----------------------------------
+	Diagram of 
+		3 masters behind lb
+	
+	ETCD Quorum
+		Distributed census algorithm
+			RAFT
+		Client unaware of the master
+		Master nodes behind a lb
+		Quorum = N/2+1
+		N: no. of nodes voting.
+		So we need odd number of nodes.
+		Even nodes cannot form quorum.
+		
+	kubectl get pods -A
+	
+	
 	
 	1. Understanding the pki directory
-		cd /etc/kubernetes/pki/etcd
+		ls /etc/kubernetes/pki/etcd
 	ls
 		etcd certificates
 	2. cd ~
 	mkdir ~/backup
-	cp -r /etc/kubernetes/pki/ ~/backup
+	sudo cp -r /etc/kubernetes/pki/ ~/backup
 		backup tls and certificates.
+	
 	
 	Create a backup for etcd control.
 	get etcdctl
 		go get github.com/coreos/etcd/etcdctl 
 			Now etcdctl will work.
 		
+		
+		
 	Create a snapshot
 	ETCDCTL_API=3 \ #version
 	etcdctl snapshot save ~/backup/snapshot.db \ #command to save the snapshot
-	--endpoints=https://127.0.0.12379 \ #define endpoint
+	--endpoints=https://127.0.0.1:2379 \ #define endpoint
 	--cacert=/etc/kubernetes/pki/etcd/ca.crt \ #etcd cert
 	--cert=/etc/kubernetes/pki/etcd/healthcheck-client.crt \ #tls cert
 	--key=/etc/kubernetes/pki/etcd/healthcheck-client.key #tls key
 	
+	
+
+-------------------------------------------------------------------------------------------------------------------------------
+Steps that worked
+1. Install etcdctl according to https://github.com/etcd-io/etcd/releases
+	
+   2  ETCD_VER=v3.3.25
+   3  GOOGLE_URL=https://storage.googleapis.com/etcd
+   4  ITHUB_URL=https://github.com/etcd-io/etcd/releases/download
+   5  GITHUB_URL=https://github.com/etcd-io/etcd/releases/download
+   6  DOWNLOAD_URL=${GOOGLE_URL}
+   7  rm -f /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz
+   8  rm -rf /tmp/etcd-download-test && mkdir -p /tmp/etcd-download-test
+   9  curl -L ${DOWNLOAD_URL}/${ETCD_VER}/etcd-${ETCD_VER}-linux-amd64.tar.gz -o /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz
+   10  tar xzvf /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz -C /tmp/etcd-download-test --strip-components=1
+   11  rm -f /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz
+   12  /tmp/etcd-download-test/etcd --version
+   13  ETCDCTL_API=3 /tmp/etcd-download-test/etcdctl version
+
+	
+	
+2. Do backup 
+	
+	14. sudo ETCDCTL_API=3  /tmp/etcd-download-test/etcdctl snapshot save ~/backup/snapshot.db --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/healthcheck-client.crt --key=/etc/kubernetes/pki/etcd/healthcheck-client.key
+2020-10-28 11:28:05.960492 I | clientv3: opened snapshot stream; downloading
+2020-10-28 11:28:06.665664 I | clientv3: completed snapshot read; closing
+Snapshot saved at /home/vagrant/backup/snapshot.db
+
+
+-------------------------------------------------------------------------------------------------------------------------------
+
 		
 		ls ~/backup
 			confirm we have everything before we break the system.
 	
 	Simulate system failure
-	kubeadm reset -m
+	sudo kubeadm reset -f
 
 	kubectl get nodes would fail
 	https://elastisys.com/backup-kubernetes-how-and-why/
 	
 	Restore cluster
 	1. Copy the certificates 
-		cp -r ~/backup/pki /etc/kubernetes/
+		sudo cp -r ~/backup/pki /etc/kubernetes/
 		ls /etc/kubernetes/pki/
-		rm -rf /etc/kubernetes/snapshot.db #we don't it here.
+
 	
 	2. Restore etcd 
 		ETCDCTL_API=3 \
 		etcdctl snapshot restore ~/backup/snapshot.db
+---------------------------------------------------------		
+	sudo ETCDCTL_API=3  /tmp/etcd-download-test/etcdctl	snapshot restore ~/backup/snapshot.db
+---------------------------------------------------------
 		
-		ls default.etcd/
+		sudo ls default.etcd/
 		tree default.etcd
 		
-		mv default.etcd/member /var/lib/etcd/
+		sudo mv default.etcd/member /var/lib/etcd/
 		
 	3. initialize the kubernetes instance back.
 	
-	kubeadm init --ignore-preflight-errors=DirAvailable--var-lib-etcd
+	sudo kubeadm init --ignore-preflight-errors=DirAvailable--var-lib-etcd
 	
-	
+-----------------------------------------------------------------------
+	sudo kubeadm init --ignore-preflight-errors=DirAvailable--var-lib-etcd --apiserver-advertise-address=192.168.76.130 --pod-network-cidr=192.168.0.0/16	
+-----------------------------------------------------------------------		
 		
+	N.B: There is no need for either calico (n/w plugin to be applied) or worker nodes to be joined as they are already restored from back.	
+		
+	https://docs.cloudbees.com/docs/admin-resources/latest/backup-restore/kubernetes
+Kubernetes volume back	
 ##########################################################################################################	
 
 15% - Workloads & Scheduling
@@ -1739,6 +1856,696 @@ on worker node
 		kubectl run nginx --image=nginx --dry-run=client -o yaml --restart=Never > abc.yaml
 		
 
+
+Node affinity, 
+	Property of Pods
+		attracts them to a set of nodes 
+			(either 
+			as a preference 
+				or 
+			hard requirement.
+			
+			
+			
+Taints and tolerations work together
+	opposite of Node affinity
+
+Ensure that pods are not scheduled onto inappropriate nodes. 
+Nodes get tainted
+Pods can join a tainted node only if it can 
+	tolerate that taint
+			
+			
+Taints 
+	Allow a node to repel a set of pods.
+	Are applied to a node
+	Multiple Taints can be applied on a Node.
+
+Tolerations 
+	Are applied to pods
+	Allow pods to schedule onto nodes with matching taints.
+	Multiple Tolerations can be applied on a Pod.
+	
+	General format of taint
+		kubectl taint nodes <node-name> key=value:taint-effect
+		
+	taint-effect can be
+		NoSchedule: 
+			Pod's will not be scheduled on the Node
+			But Pod's already running will continue.
+		PreferNoSchedule
+			Pod's may not be scheduled - but not guaranteed.
+		NoExecute
+			Pod's will not be scheduled.
+			Existing Pod's will be evicted.
+
+----------------------------------------------------------------------
+kubectl describe node kmaster| grep Taint	
+kubeadm installation by default
+	Taints the master node with a taint
+	So no pods are scheduled on the master by default.
+
+Following command will help us to see the default taint on the kmaster node.
+
+	kubectl describe node kmaster| grep Taint		
+----------------------------------------------------------------------
+
+
+----------------------------------------------------------------------------	
+Lab: 
+	You add a taint to a node using kubectl taint. 
+		kubectl taint nodes kworker1 key=value:NoSchedule
+
+	Pod will not be able to schedule onto kworker1 unless it has a matching toleration.
+	
+	Remove the taint as follows
+		kubectl taint nodes kworker1 key:NoSchedule-
+		
+	cd taintsAndTolerations
+	kubectl apply -f PodWithTolerations.yaml
+----------------------------------------------------------------------------		
+	
+	The other way to mention was
+	tolerations:
+	- key: "key"
+	  operator: "Equal"
+	  value: "value"
+	  effect: "NoSchedule"
+
+
+
+	toleration "matches" a taint if 
+	-------------------------------
+		1. keys are same 
+			and 
+		2. effects are same, 
+			and:
+		
+		3. operator is Exists (skip value), 
+			or
+		   operator is Equal and the values are equal.
+		
+		
+	Two special cases
+	-----------------
+		An empty key with 
+			operator Exists 
+			matches all keys, values and effects 
+				which means this will tolerate everything. 
+		An empty effect 
+			matches all effects with key key.
+			
+	
+	
+	Valid values of effect 
+	----------------------
+		1. PreferNoSchedule
+			Soft version of NoSchedule
+			System will try to avoid. But not guaranteed.
+		2. NoSchedule
+			Guranteed that unless tolerated Pods won't join.
+		3. NoExecute	
+			pod will NOT be scheduled onto the node
+				any running pod will be evicted from the node 
+		
+		
+	Multiple Taints and Tolerations
+	-------------------------------
+		For all node's taints
+			ignore pod's matching toleration; 
+		the rest 
+			perform indicated effects on the pod. 
+		
+		i.e. 
+		if 
+			at least one un-ignored taint with effect NoSchedule 
+			then 
+				Kubernetes WILL NOT schedule the pod onto that node
+					unlees it has a matching toleration.
+
+		if 
+			no un-ignored taint with effect NoSchedule but 
+			there is at least one un-ignored taint with effect PreferNoSchedule 
+			then 
+				Kubernetes will TRY NOT TO schedule the pod onto the node
+			
+		if 
+			at least one un-ignored taint with effect NoExecute 
+			then 
+				pod will NOT be scheduled onto the node
+					even if Toleration matches.
+				any running pod (without matching tolerations) will be evicted from the node 
+				a running pod with matching toleration will continue to run.
+				
+		
+		
+	For e.g.
+	Node1 with taints
+		
+		kubectl taint nodes node1 key1=value1:NoSchedule
+		kubectl taint nodes node1 key1=value1:NoExecute
+		kubectl taint nodes node1 key2=value2:NoSchedule
+
+
+		
+	Pod1 with Tolerations
+	
+		tolerations:
+		- key: "key1"
+		  operator: "Equal"
+		  value: "value1"
+		  effect: "NoSchedule"
+		- key: "key1"
+		  operator: "Equal"
+		  value: "value1"
+		  effect: "NoExecute"
+
+
+	node1
+		key1=value1:NoSchedule
+		key1=value1:NoExecute
+		key2=value2:NoSchedule
+
+	Pod1
+		key1:Equal:value1:NoSchedule
+		key1:Equal:value1:NoExecute
+
+	Only Taint that doesn't match 
+		key2=value2:NoSchedule
+	
+	Effect
+		No Pod can be scheduled on the node
+		But a running Pod will not be removed, because there is a toleration for key1=value1
+			which is the only taint with effect NoExecute.
+			
+		What if the operator in Pod was exists?
+		
+		
+	While you create Pod you can allow it to get removed if there is a taint of NoExecute
+
+		Use tolerationSeconds for this.
+
+		tolerations:
+		- key: "key1"
+		  operator: "Equal"
+		  value: "value1"
+		  effect: "NoExecute"
+		  tolerationSeconds: 3600
+		
+	
+	Pod would be evicted after 3600 seconds.
+	
+	e.g. Use cases where you can use this
+	-------------------------------------
+	Use case 1: Dedicated Nodes: 
+		If 
+			dedicate set of nodes exclusively to certain users, 
+				add a taint to those nodes 
+					kubectl taint nodes nodename dedicated=groupName:NoSchedule
+				then 
+					add corresponding toleration to their pods 
+			
+			The pods with the tolerations 
+				will then be allowed to use the tainted (dedicated) nodes 
+				as well as any other nodes in the cluster. 
+			
+			But we wanted to dedicate the nodes to those Pods and ensure they only use the dedicated nodes, 
+			
+			
+			
+			add a label similar to the taint to the same set of nodes (e.g. dedicated=groupName), 
+			and 
+				admission controller should additionally 
+				add a node affinity 
+					such that pods can only schedule onto nodes labeled with dedicated=groupName.
+					
+			
+------------------------------------------------------------------------------------------------------------------------	
+	Use case 2: Nodes with Special Hardware: 
+		Small subset of nodes have specialized hardware, 
+		don't want to run all Pod's on those nodes
+		
+		taint the nodes that have the specialized hardware
+			kubectl taint nodes nodename special=true:NoSchedule 
+		or 
+			kubectl taint nodes nodename special=true:PreferNoSchedule
+		
+		add corresponding toleration to pods that use the special hardware. 
+			Better to apply the tolerations using a custom admission controller. 
+		
+		e.g., 
+			Use Extended Resources to represent the special hardware, 
+			taint your special hardware nodes with the extended resource name and run the ExtendedResourceToleration admission controller. Now, because the nodes are tainted, no pods without the toleration will schedule on them. But when you submit a pod that requests the extended resource, the ExtendedResourceToleration admission controller will automatically add the correct toleration to the pod and that pod will schedule on the special hardware nodes. This will make sure that these special hardware nodes are dedicated for pods requesting such hardware and you don't have to manually add tolerations to your pods
+-----------------------------------------------------------------------------------------------------------------------		
+
+
+	Taint based Evictions 
+	---------------------
+	Impact of NoExecute taint
+		
+		1. pods that do not tolerate the taint are evicted immediately
+		2. pods that tolerate the taint without tolerationSeconds remain bound forever
+		3. pods that tolerate the taint with tolerationSeconds remain bound for the specified amount of time
+
+	The node controller automatically taints a Node when certain conditions are true. In Built taints:
+		
+		node.kubernetes.io/not-ready: 
+			Node is not ready. 
+		node.kubernetes.io/unreachable: 
+			Node is unreachable from the node controller. 
+		node.kubernetes.io/out-of-disk: 
+			Node becomes out of disk.
+		node.kubernetes.io/memory-pressure: 
+			Node has memory pressure.
+		node.kubernetes.io/disk-pressure: 
+			Node has disk pressure.
+		node.kubernetes.io/network-unavailable: 
+			Node's network is unavailable.
+		node.kubernetes.io/unschedulable: 
+			Node is unschedulable.
+		node.cloudprovider.kubernetes.io/uninitialized: 
+			kubelet is started with "external" cloud provider
+			this taint is set on a node to mark it as unusable. 
+			kubelet removes this taint
+				After controller from the cloud-controller-manager initializes this node.
+				
+				
+	N.B:
+		1. Control plane can rate limit 
+			adding node new taints to nodes.
+			
+		2. Use tolerationSeconds in Pod spec. 
+			how long that Pod waits bound to a failing or unresponsive Node.
+			
+			tolerations:
+			- key: "node.kubernetes.io/unreachable"
+			  operator: "Exists"
+			  effect: "NoExecute"
+			  tolerationSeconds: 6000
+
+			i.e. you may wait longer than the default.
+			Default tolerationSeconds=300	#5 min.
+			
+			
+	Taint Nodes by Condition
+	------------------------
+	The node lifecycle controller 
+		Automatically creates taints corresponding to Node conditions with NoSchedule effect. 
+	Scheduler does not check Node conditions; 
+		instead the scheduler checks taints. 
+		So Node conditions don't affect what's scheduled onto the Node. 
+	
+	We can choose to ignore some of the Node's problems 
+		add appropriate Pod tolerations.
+
+
+	DaemonSet controller automatically 
+		adds the following NoSchedule tolerations to all daemons.
+		
+		node.kubernetes.io/memory-pressure
+		node.kubernetes.io/disk-pressure
+		node.kubernetes.io/out-of-disk (only for critical pods)
+		node.kubernetes.io/unschedulable (1.10 or later)
+		node.kubernetes.io/network-unavailable (host network only)
+
+	
+			
+	
+------------------------------------------------------------------------------
+Assigning Pods to Nodes	
+https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+------------------------------------------------------------------------------
+	Pod 
+		should run on particular Node(s)
+	or 
+		prefer to run on particular nodes. 
+		
+		
+	There are several ways to do this
+	Recommended approaches all use label selectors to make the selection. 
+	
+	nodeSelector
+	------------
+	nodeSelector is the simplest recommended 
+	nodeSelector: field of PodSpec. 
+		specifies a map of key-value pairs. 
+		Pod runs on a 
+			node which has all key-value pairs matching in it's label.
+			
+	Steps to do this
+	1. Add label to Nodes
+		kubectl label nodes kworker1 disktype=ssd
+		Verify
+			kubectl get nodes --show-labels
+		or
+			kubectl describe node "nodename"
+		
+	2. Add a nodeSelector to pod		
+		apiVersion: v1
+		kind: Pod
+		metadata:
+		  name: nginx
+		  labels:
+			env: test
+		spec:
+		  containers:
+		  - name: nginx
+			image: nginx
+			imagePullPolicy: IfNotPresent
+		--------------------------------------
+		  nodeSelector:
+			disktype: ssd
+		--------------------------------------
+
+
+	built-in node labels
+	---------------------
+	Nodes come pre-populated with a standard set of labels
+		kubernetes.io/hostname
+		failure-domain.beta.kubernetes.io/zone
+		failure-domain.beta.kubernetes.io/region
+		topology.kubernetes.io/zone
+		topology.kubernetes.io/region
+		beta.kubernetes.io/instance-type
+		node.kubernetes.io/instance-type
+		kubernetes.io/os
+		kubernetes.io/arch
+
+	
+	Node isolation/restriction: Get back to this latter.
+	
+	
+	
+	Affinity and anti-affinity
+	--------------------------
+	affinity/anti-affinity very robust feature adding more capabilities to NodeAffinity
+	
+	Two types of affinity
+		Node Affinity
+			Like Node selector
+		Pod Affinity ("inter-pod affinity/anti-affinity")
+	
+	The affinity/anti-affinity language 
+		More expressive
+		Offers more matching rules besides exact matches 		
+		Indicate that the rule is 
+			"soft"/"preference" 
+			NOT hard requirement
+		Can constrain against labels on other pods running on the node 
+			This way pods can and cannot be co-located
+	
+	
+		Node Affinity
+		-------------
+		Similar to NodeSelector
+		Two types
+			requiredDuringSchedulingIgnoredDuringExecution 
+				hard
+				specifies rules that must be met for a pod to be scheduled onto a node
+			preferredDuringSchedulingIgnoredDuringExecution
+				soft
+				specifies preferences that the scheduler will try to enforce but will not guarantee
+				
+		IgnoredDuringExecution implies
+			if labels on a node change at runtime against the allocation
+				the pod will still continue to run on the node.
+				
+	
+		Lot of features planned here by k8s.. Please keep a watch on this space.
+	
+	e.g.
+
+	apiVersion: v1
+	kind: Pod
+	metadata:
+	  name: with-node-affinity
+	spec:
+--------------------------------------------------------	
+	  affinity:
+		nodeAffinity:
+		  requiredDuringSchedulingIgnoredDuringExecution:
+			nodeSelectorTerms:
+			- matchExpressions:
+			  - key: kubernetes.io/e2e-az-name
+				operator: In
+				values:
+				- kworker1		#This should be Node label value and not Node name
+				- kworker3		#Node label value
+		  preferredDuringSchedulingIgnoredDuringExecution:
+		  - weight: 1			#The node with the highest weight is preferred. Range 1-100
+			preference:
+			  matchExpressions:
+			  - key: key		#Node label
+				operator: In
+				values:
+				- kworker1		#Node label value
+	  containers:
+	  - name: with-node-affinity
+		image: k8s.gcr.io/pause:2.0
+	
+	
+	operator can be
+		In, NotIn, Exists, DoesNotExist, Gt, Lt
+		
+		
+	if both nodeSelector and nodeAffinity are used
+		both must be satisfied for the pod to be scheduled onto a candidate node.
+		
+	nodeSelectorTerms can be used to define rules between nodeSelector and nodeAffinity
+	
+	
+	weight field in preferredDuringSchedulingIgnoredDuringExecution 
+		In the range 1-100. 
+	For each node that meets all of the scheduling requirements 
+		(resource request, RequiredDuringScheduling affinity expressions, etc.), 
+		the scheduler will compute a 
+			sum by iterating through the elements of this field and 
+			adding "weight" to the sum if the node matches the corresponding MatchExpressions. 
+			This score is then combined with the scores of other priority functions for the node. The node(s) with the highest total score are the most preferred
+	
+	
+	Inter-pod affinity and anti-affinity
+	------------------------------------
+	Disclaimer:
+		1. Inter-pod affinity and anti-affinity 
+			require substantial amount of processing 
+			Can slow down scheduling in large clusters significantly. 
+			K8s does not recommend using them in clusters larger than several hundred nodes.
+			
+		2. Pod anti-affinity requires nodes to be consistently labelled, 
+			Every node in the cluster must 
+				have an appropriate label matching topologyKey. 
+			If some nodes are missing topologyKey label, 
+				Can lead to unintended behavior
+	
+	
+		Two types:
+			requiredDuringSchedulingIgnoredDuringExecution 
+				hard
+				can co-locate pods
+		and
+			preferredDuringSchedulingIgnoredDuringExecution 
+				soft
+				can spread pod's
+	
+	e.g.
+
+	apiVersion: v1
+	kind: Pod
+	metadata:
+	  name: with-pod-affinity
+	spec:
+	------------------------------------------------------------
+	  affinity:
+		podAffinity:
+		  requiredDuringSchedulingIgnoredDuringExecution:
+		  - labelSelector:
+			  matchExpressions:
+			  - key: security
+				operator: In
+				values:
+				- S1
+			topologyKey: failure-domain.beta.kubernetes.io/zone
+			---------------------------------------------------
+			#pod can be scheduled onto a node 
+			#	only if 
+			#		that node is in the same zone (Refer topologyKey)
+			#		as at least one already-running pod 
+			#			with 
+			#				label(
+			#					key="security" and 
+			#					value="S1"
+			#				)
+
+				pod is eligible only on a node with 
+					label 
+						key=failure-domain.beta.kubernetes.io/zone 
+					and  
+						value=V 
+						should have 
+							at least one pod with 
+							label 
+								key="security" 
+								value="S1".
+
+	------------------------------------------------------------	
+		podAntiAffinity:
+		  preferredDuringSchedulingIgnoredDuringExecution:
+		  - weight: 100
+			podAffinityTerm:
+			  labelSelector:
+				matchExpressions:
+				- key: security
+				  operator: In
+				  values:
+				  - S2
+			  topologyKey: failure-domain.beta.kubernetes.io/zone
+	--------------------------------------------------------------
+			pod cannot be scheduled onto a node 
+				if that node is in the same ZONE as a 
+				pod with 
+				label 
+					key="security" 
+					value="S2"
+	--------------------------------------------------------------
+	  containers:
+	  - name: with-pod-affinity
+		image: k8s.gcr.io/pause:2.0
+	
+	
+	topologyKey 
+		can be any legal label-key
+		However 
+			There are some constraints
+				For security and performance reasons
+			
+			empty topologyKey is not allowed
+				For 
+					pod affinity
+					anti-affinity
+				For
+					requiredDuringSchedulingIgnoredDuringExecution and 
+					preferredDuringSchedulingIgnoredDuringExecution
+
+
+		For 
+			requiredDuringSchedulingIgnoredDuringExecution pod anti-affinity, 
+				the admission controller 
+					LimitPodHardAntiAffinityTopology was introduced to 
+						limit topologyKey to kubernetes.io/hostname. 
+		If you want to make it available 
+			you may modify the admission controller, 
+		or 
+			disable it.
+	
+		Otherwise 
+			topologyKey can be any legal label-key.
+
+			
+	List of Namespaces can also be used along with labelSelector and topologyKey
+		At same level as that of labelSelector and topologyKey
+		Scheduler should consider the same as well while allocating Nodes.
+		
+	
+	e.g. Practical Use cases
+	Use case 1: Always co-located in the same node
+	----------------------------------------------
+	In a three node cluster, 
+		Web application may have in-memory cache such as redis. 
+		We want the web-servers to be co-located with the cache as much as possible.
+
+	Yaml snippet of a simple redis deployment 
+		with three replicas and selector label app=store. 
+		The deployment has PodAntiAffinity configured 
+			scheduler will not co-locate replicas on a single node
+			
+
+	
+	apiVersion: apps/v1
+	kind: Deployment
+	metadata:
+	  name: redis-cache
+	spec:
+	  selector:
+		matchLabels:
+		  app: store
+	  replicas: 3
+	  template:
+		metadata:
+		  labels:
+			app: store
+		spec:
+		------------------------------------------------------------
+		  affinity:
+			podAntiAffinity:
+			  requiredDuringSchedulingIgnoredDuringExecution:
+			  - labelSelector:
+				  matchExpressions:
+				  - key: app
+					operator: In
+					values:
+					- store
+				topologyKey: "kubernetes.io/hostname"	#podAntiAffinity: All 3 pod's won't be scheduled on the same machine.
+		------------------------------------------------------------		
+		  containers:
+		  - name: redis-server
+			image: redis:3.2-alpine
+		
+		
+	Now let's create webserver deployment with 
+		podAntiAffinity and podAffinity configured. 
+		Each pod replicas will be co-located with pods of Redis that have selector label app=store. 
+		No web-server replica will be co-located on a single node.	
+		
+	apiVersion: apps/v1
+	kind: Deployment
+	metadata:
+	  name: web-server
+	spec:
+	  selector:
+		matchLabels:
+		  app: web-store
+	  replicas: 3
+	  template:
+		metadata:
+		  labels:
+			app: web-store
+		spec:
+	-----------------------------------------------------------	
+		  affinity:
+			podAntiAffinity:
+			  requiredDuringSchedulingIgnoredDuringExecution:
+			  - labelSelector:
+				  matchExpressions:
+				  - key: app
+					operator: In
+					values:
+					- web-store
+				topologyKey: "kubernetes.io/hostname"
+			podAffinity:
+			  requiredDuringSchedulingIgnoredDuringExecution:
+			  - labelSelector:
+				  matchExpressions:
+				  - key: app
+					operator: In
+					values:
+					- store
+				topologyKey: "kubernetes.io/hostname"
+	--------------------------------------------------------------			
+		  containers:
+		  - name: web-app
+			image: nginx:1.16-alpine	
+	---------------------------------------------------------	
+	
+	nodeName 
+	--------
+		Simplest form of node selection constraint, 
+		field of PodSpec. 
+		If specified 
+			scheduler ignores the pod and the kubelet running on the named node tries to run the pod. 
+			Takes precedence over the above methods for node selection.
+
+
 	Scheduling
 	----------
 	https://kubernetes.io/docs/concepts/scheduling-eviction/kube-scheduler/
@@ -1747,6 +2554,18 @@ on worker node
 	For every Pod that the scheduler discovers, 
 		scheduler takes responsibility for finding the best Node 
 	Following scheduling principles is used to decide.
+		
+	
+	The Kubernetes Scheduler 
+		component in charge of determining which node is most suitable for running pods.
+	It does that using two main decision-making processes:
+		Predicates: 
+			which are a set of tests, each of them qualifies to true or false. A node that fails the predicate is excluded from the process.
+		Priorities: where each node is tested against some functions that give it a score. The node with the highest score is chosen for pod deployment.
+		The Kubernetes Scheduler also honors user-defined factors that affect its decision:
+		Node Selector: the .spec.nodeSelector parameter in the pod definition narrows down node selection to those having the labels defined in the nodeSelector.
+		Node affinity and anti-affinity: those are used for greater flexibility in node selection as they allow for more expressive selection criteria. Node affinity can be used to guarantee that only the matching nodes are used or only to set a preference.
+		Taints and tolerations work in the same manner as node affinity. However, their default action is to repel pods from the tainted nodes unless the pods have the necessary tolerations (which are just a key, a value, and an effect). Tolerations are often combined with node affinity or node selector parameters to guarantee that only the matched nodes are used for pod scheduling.	
 		
 		kube-scheduler
 		--------------
@@ -1845,7 +2664,7 @@ on worker node
 
 			Predicates 
 			----------
-			he following predicates implement filtering:
+			The following predicates implement filtering:
 
 			PodFitsHostPorts: 
 				Checks if a Node has free ports (the network protocol kind) for the Pod ports the Pod is requesting.
@@ -2910,7 +3729,72 @@ Tips:
 	
 	https://chrislovecnm.com/kubernetes/cni/choosing-a-cni-provider/
 	https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/
+
+Which CNI provider should I use?
+
+
+	There is not one provider that meets everyones needs, 
+	and there are many different options. 
+		
+	CNI in kops
+	-----------
+	At last count, 
+		kops supports seven different CNI providers besides kubenet (default with kuberentes). 
+		
+Here is our current list of providers that can be installed out of the box, sorted in alphabetical order.
+
+	Calico
+	Canal (Flannel + Calico)
+	flannel
+	kopeio-vxlan
+	kube-router
+	romana
+	Weave Net
+
+All of the CNI providers use a daemonset installation model, 
+	where their product deploys a Kubernetes Daemonset. 
+	 
+		kubectl apply -f on the master once the K8s API server has started. 
+	
+	
+	Summary of the Providers
+	Calico
+	------
+	Simple, 
+	scalable 
+		networking using a pure L3 approach. 
+	Enables native, 
+		unencapsulated networking in environments that support it, 
+	Works on  
+		AWS, 
+		AZ’s and 
+		other environments with L2 adjacency between nodes, 
+		or 
+		in deployments where it’s possible to peer with the infrastructure using BGP, such as on-premise. 
+	Calico also provides a stateless 
+		IP-in-IP mode that can be used in other environments, if necessary. 
+	Beyond scalable networking, Project Calico also offers policy isolation, allowing you to secure and govern your microservices/container infrastructure using advanced ingress and egress policies. With extensive Kubernetes support, you’re able to manage your policies, in Kubernetes 1.8+.
+
+	Canal
+	-----
+	Canal is a CNI provider that gives you the best of Flannel and Project Calico, providing simple, easy to use/out of the box VXLAN networking, while also allowing you take advantage of policy isolation with Calico policies.
+
+	This provider is a solution for anyone who wants to get up and running while taking advantage of familiar technologies that they may already be using.
+
+
+	flannel
+	--------
+
+	Flannel is a simple and easy way to configure a layer3 network fabric designed for Kubernetes. 
+	No external database (uses Kubernetes API), 
+		simple performant works anywhere VXLAN default, 
+		can be layered with Calico policy engine (Canal). 
+		
+	
+	
 ##########################################################################################################	
+
+
 
 
 
@@ -3248,6 +4132,74 @@ Mitigates: Kubelet software fault
 ##########################################################################################################	
 	• Understand how to monitor applications
 		covered in 1st part.
+		
+	To scale an application and provide a reliable service, 
+		understand how the application behaves when it is deployed. 
+	Monitor  
+		containers, 
+		pods, 
+		services, 
+		characteristics of the overall cluster. 
+	Kubernetes provides detailed information about an application's resource usage at each of these levels. 
+	
+	There are multiple solutions to monitor
+	
+	Resource metrics pipeline
+	-------------------------
+	The resource metrics pipeline provides a limited set of metrics related to cluster components such as the 
+		Horizontal Pod Autoscaler controller,
+			https://github.com/kubernetes-sigs/metrics-server
+		kubectl top utility. 
+	These metrics are collected by the lightweight, short-term, in-memory metrics-server and are exposed via the metrics.k8s.io API.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+https://www.youtube.com/watch?v=uxuyPru3_Lc
+https://github.com/stefanprodan/k8s-prom-hpa
+https://www.youtube.com/watch?v=uxuyPru3_Lc
+
+	HPA (Horizontal Pod Autoscaler) requires
+	Infra.
+		Nginx deployment one replica
+		NodePort service
+		HPA
+			when CPU utilization goes above a threshhold, 
+				Nginx deployment will be auto scaled. out
+			then it will be auto scaled in when the load reduce.
+			
+			Siege
+				to put load
+			A metric service or heapster is mandatory
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	https://github.com/kubernetes-sigs/metrics-server
+		metrics-server discovers all nodes on the cluster 
+			queries each node's kubelet for CPU and memory usage. 
+		The kubelet acts as a 
+			bridge between the Kubernetes master and the nodes, 
+			managing the pods and containers running on a machine. 
+		The kubelet 
+			translates each pod into its constituent containers 
+			fetches individual container usage statistics from the container runtime 
+				through the container runtime interface. 
+			fetches this information from the integrated cAdvisor for the legacy Docker integration. 
+		It then exposes the aggregated pod resource usage statistics through the metrics-server Resource Metrics API. 
+		This API is served at /metrics/resource/v1beta1 on the kubelet's authenticated and read-only ports.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	Full metrics pipeline
+	---------------------
+	A full metrics pipeline gives you access to richer metrics. 
+	Kubernetes 
+		can respond to these metrics by 
+			automatically scaling or 
+			adapting the cluster based on its current state, 
+			using mechanisms such as the Horizontal Pod Autoscaler. 
+		The monitoring pipeline fetches metrics from the kubelet and then exposes them to Kubernetes via an adapter by implementing either the custom.metrics.k8s.io or external.metrics.k8s.io API.
+
+	Prometheus, a CNCF project, can natively monitor Kubernetes, nodes, and Prometheus itself. Full metrics pipeline projects that are not part of the CNCF are outside the scope of Kubernetes documentation.
+
+
 ##########################################################################################################	
 	• Manage container stdout & stderr logs
 	
@@ -3263,11 +4215,116 @@ https://platform9.com/blog/kubernetes-logging-best-practices/
 https://timber.io/blog/collecting-application-logs-on-kubernetes/
 ##########################################################################################################	
 	• Troubleshoot application failure
-##########################################################################################################	
-	• Troubleshoot cluster component failure
 	
+		kubectl describe pods ${POD_NAME}
+			case1: If a Pod is stuck in Pending
+				1. You don't have enough resources:
+					CPU
+					Memory
+					Solution: 
+						You may have exhausted the supply of CPU or Memory in your cluster, 
+						Delete Pods, 
+						Adjust resource requests
+						Add new nodes to your cluster.
+				2. You are using hostPort
+					E.g. http://alesnosek.com/blog/2017/02/14/accessing-kubernetes-pods-from-outside-of-the-cluster/
+					Similar to "host" in Docker.
+						e.g. hostNetwork: true
+						
+					When you bind a Pod to a hostPort 
+						there are a limited number of places that pod can be scheduled. 
+					In most cases, hostPort is unnecessary, 
+						try using a Service object to expose your Pod. 
+						If you do require hostPort then you can only schedule as many Pods as there are nodes in your Kubernetes cluster
+				
+				
+			case2: My pod stays waiting	
+				If a Pod is stuck in the Waiting state, 
+					it has been scheduled to a worker node, 
+					but it can't run on that machine. 
+					
+					Solution: kubectl describe ... should be informative. 
+					The most common cause of Waiting pods is a failure to pull the image. There are three things to check:
+						Make sure that you have the name of the image correct.
+						Have you pushed the image to the repository?
+						Run a manual docker pull <image> on your machine to see if the image can be pulled
+			
+			case3: My pod is crashing or otherwise unhealthy
+				kubectl logs ${POD_NAME} ${CONTAINER_NAME}
+				
+				If your container has previously crashed, you can access the previous container's crash log with:
+					kubectl logs --previous ${POD_NAME} ${CONTAINER_NAME}
+				
+				Debugging with container exec
+					kubectl exec ${POD_NAME} -c ${CONTAINER_NAME} -- ${CMD} ${ARG1} ${ARG2} ... ${ARGN}
+					kubectl exec cassandra -- cat /var/log/cassandra/system.log
+					kubectl exec -it cassandra -- sh
+					
+				Debugging with an ephemeral debug container
+					kubectl run ephemeral-demo --image=k8s.gcr.io/pause:3.1 --restart=Never
+					
+				You can instead add a debugging container using kubectl alpha debug. If you specify the -i/--interactive argument, kubectl will automatically attach to the console of the Ephemeral Container.
+					kubectl alpha debug -it ephemeral-demo --image=busybox --target=ephemeral-demo
+					
+					qa
+			kubectl describe pod ephemeral-demo	
+			kubectl delete pod ephemeral-demo
+			
+			Case4: 
+				The first thing to do is to delete your pod and try creating it again with the --validate option. For example, run 
+				
+					kubectl apply --validate -f mypod.yaml. If you misspelled command as commnd then will give an error like this:
+						My Pod is not showing it
+
+
+				Debugging Replication Controllers
+					Replication controllers are fairly straightforward. They can either create Pods or they can't. If they can't create pods, then please refer to the instructions above to debug your pods.
+
+						kubectl describe rc ${CONTROLLER_NAME} to introspect events related to the replication controller.
+						
+					Debugging Services 
+						kubectl get endpoints ${SERVICE_NAME}
+						kubectl describe ${SERVICE_NAME}
+						kubectl get ${SERVICE_NAME} -o wide
+					
+					
+			Case5:
+				Network traffic is not forwarded
+				If you can connect to the service, 
+					but the connection is immediately dropped, 
+					there are endpoints in the endpoints list, it's likely that the proxy can't contact your pods.
+
+				There are three things to check:
+					Are your pods working correctly? Look for restart count, and debug pods.
+					Can you connect to your pods directly? Get the IP address for the Pod, and try to connect directly to that IP.
+					Is your application serving on the port that you configured? 
+					Kubernetes doesn't do port remapping, 
+						so if your application serves on 8080, 
+						the containerPort field needs to be 8080.
+
+
+##########################################################################################################
+			
+	• Troubleshoot cluster component failure
+		Already covered above
+		https://kubernetes.io/docs/tasks/debug-application-cluster/debug-cluster/
+		kubectl get nodes
+		To get detailed information about the overall health of your cluster
+		kubectl cluster-info dump
 ##########################################################################################################
 	• Troubleshoot networking
+		https://kubernetes.io/docs/tasks/debug-application-cluster/debug-service/
+		kubectl run -it --rm --restart=Never alpine --image=alpine sh
+		kubectl exec <POD-NAME> -c <CONTAINER-NAME> -- <COMMAND>
+		
+		
+		Query the underlying pods as below
+		kubectl get pods -l app=hostnames
+		
+		kubectl get pods -l app=hostnames -o go-template='{{range .items}}{{.status.podIP}}{{"\n"}}{{end}}'
+		
+		
+		
 ##########################################################################################################
 
 
@@ -3332,3 +4389,4 @@ https://medium.com/@soumiyajit/certified-kubernetes-administrator-cka-1-19-prepa
 
 https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands
 
+https://opensourcelibs.com/lib/kubernetes-certified-administrator-prep-guide

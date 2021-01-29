@@ -31,4 +31,4 @@ https://kubernetes.io/docs/setup/learning-environment/minikube/
 
 ### Contact
 
-Twitter = @VT_UK
+https://www.linkedin.com/in/vilas-varghese-742b8530/

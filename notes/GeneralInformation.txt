@@ -1,0 +1,227 @@
+CKA
+---
+
+The Certified Kubernetes Administrator (CKA) 
+	program was created by the Cloud Native Computing Foundation (CNCF), 
+		in collaboration with The Linux Foundation
+	help develop the Kubernetes ecosystem.
+	
+	As one of the highest velocity open source projects Kubernetes use is exploding. 
+	
+	The Cloud Native Computing Foundation offers a certification program that allows users to demonstrate their competence in a hands-on, command-line environment.
+
+
+It is an online, proctored, performance-based test that requires solving multiple issues from a command line.
+
+The CKA program is separate from Kubernetes Certified Service Provider (KCSP) program. 
+You can become a CKA without needing to be involved with a KCSP, but for a company to become a KCSP it must employ at least three CKAs. 
+
+CNCF has open sourced the curriculum around which the CKA exam has been created for the benefit of companies offering training. 
+
+The online exam consists of a set of performance-based items (problems) to be solved in a command line and candidates have 2 hours to complete the tasks.
+
+The Certification focuses on the skills required to be a successful Kubernetes Administrator in industry today. This includes these general domains and their weights on the exam:
+
+Curriculam can be seen 
+	https://github.com/cncf/curriculum
+
+https://docs.linuxfoundation.org/tc-docs/certification/lf-candidate-handbook
+	
+	
+Candidates must provide their own computer with:
+	Current(Latest) version of Chrome or Chromium
+	You don’t need to install a virtual machine, 
+		use a client machine, or anything beyond a 
+		Chrome or Chromium browser
+	Make sure you have third party cookies turned on for the duration of the exam.
+		https://support.google.com/chrome/answer/95647?co=GENIE.Platform%3DDesktop&hl=en#zippy=%2Callow-or-block-cookies
+
+	Reliable internet access
+		Turn off bandwidth-intensive services 
+			(e.g. file sync, dropbox, BitTorrent)
+	Ask others who may be sharing your Internet connection not to stream video or download large files.
+	Microphone
+		Please check to make sure it is working before you start your exam session.
+	Webcam
+		Ensure the webcam is capable of being moved as the 
+			proctor may ask you to pan your surroundings to 
+				check for potential violations of exam policy.
+		Try holding up your ID while viewing your webcam feed to 
+			ensure your placement and resolution are sufficient 
+				for the person viewing your feed to read your ID.
+		If you will be testing from an employer-provide ISP or 
+			will use an employer provided machine, 
+			please ensure that streaming will be allowed using WebRTC.
+	
+	
+	Hardware Compatibility Check	
+	Candidates should run the compatibility check tool provided by the Exam Proctoring Partner to verify that their hardware meets the minimum requirements. 
+		Compatibility Check can be found below.
+		https://www.examslocal.com/ScheduleExam/Home/CompatibilityCheck
+			
+	The tool is located at https://www.examslocal.com/ScheduleExam/Home/CompatibilityCheck. 
+	Select “Linux Foundation” as the Exam Sponsor and select your Exam Code (e.g. CKA, LFCS, JSNAD etc)
+		
+	
+	Co Located Exams
+	----------------
+	If multiple Candidates are taking an exam at the same time in one location, 
+		then at least four feet (1.2 meters) of empty space on all sides must be enforced 
+		or privacy partitions must be installed.
+		
+	Skipping 
+		These are all listed on the left hand side of the below url.
+	https://docs.linuxfoundation.org/tc-docs/certification
+	
+		Exam Registration process
+		Candidate identification and authentication
+		Exam Refund Policy
+		My Portal
+		My Profile
+		Scheduling or Rescheduling an Exam
+		
+		
+		Exam Rules and Policies
+			Candidates must start their exam no later than 15 minutes after the scheduled start time. If a candidate does not start their exam within 15 minutes of the scheduled start time, they will be automatically marked as a no-show and no refund or rescheduling will be allowed.
+			Candidates must also comply with the following rules and policies during the Exam, and the Proctor cannot release the Exam until the Candidate has indicated that they have read, understood and accept these rules and policies as presented in the The Linux Foundation Global Candidate Certification and Confidentiality Agreement.
+
+		https://docs.linuxfoundation.org/global-agreement/
+		
+			Testing Location Rules
+				Room must be quiet, private and well lit
+				Bright lights or windows should not be positioned behind the Candidate
+				Testing from public spaces such as coffee shops, stores, etc. is not allowed
+				No one other than the Candidate can be present in the room
+				Desk must be clear of all notes and electronics
+
+			Candidate Conduct Rules During Exam
+				Candidate is not allowed to communicate with anyone other than the Proctor during the Exam
+				Candidate is not allowed to read the questions out loud, to themselves, during the exam
+				Candidate is not allowed to leave their desk or step out of view of the webcam, unless they have been granted specific permission by the Proctor
+				Candidate is not allowed to eat, drink (except clear liquids as per rule below), or chew gum
+				Candidate is permitted to drink clear liquids from a label-free clear bottle or a clear glass
+				Candidate is not allowed to wear any electronic device in their ears, on their face or on their body unless medically necessary
+				Candidate must refrain from making excessive and/or repetitive noise
+				Candidate must refrain from covering their mouth and/or face
+				Candidate is not allowed to write or enter input on anything (whether paper, electronic device, etc.) outside of the Exam console screen
+				Candidates must comply with any requests from the Proctor. If Candidate fails to comply, the Exam will be terminated
+
+
+			Policy on Tools and Resources 
+				Allowed during Exam
+				The following tools and resources are allowed during all Exams as long as they are used by the Candidate to work independently on exam tasks (i.e. not used for 3rd party assistance or research) and are accessed from within the Linux server terminal on which the Exam is delivered (resources that cannot be accessed from within the terminal are not allowed):
+					Man pages
+					Documents installed by the distribution (i.e. /usr/share and its subdirectories)
+					Packages that are part of the distribution (may also be installed by Candidate if not available by default)
+
+			Certified Kubernetes Administrator (CKA) & Certified Kubernetes Application Developer (CKAD)
+
+				The following tools and resources are allowed during the exam as long as they are used by candidates to work independently on exam tasks (i.e. not used for 3rd party assistance or research) and are accessed from within the Linux server terminal on which the Exam is delivered.
+				During the exam, candidates may:
+				review the Exam content instructions that are presented in the command line terminal.
+				review Documents installed by the distribution (i.e. /usr/share and its subdirectories)
+				use their Chrome or Chromium browser to open one additional tab in order to access assets at: https://kubernetes.io/docs/, https://github.com/kubernetes/,  https://kubernetes.io/blog/ and their subdomains. This includes all available language translations of these pages (e.g. https://kubernetes.io/zh/docs/)
+				No other tabs may be opened and no other sites may be navigated to   (including https://discuss.kubernetes.io/). 
+				The allowed sites above may contain links that point to external sites. It is the responsibility of the candidate not to click any links to navigate to a domain that is not allowed
+
+			Resources forbidden during the Exam:
+				Text-based email clients
+				Browsing the Internet using installed tools such as Vim and Emacs
+				Communications with other Candidates or outside resources
+				Use of devices other than the exam desktop
+				Notes
+				Documentation (* the documentation installed by the distribution IS permitted) 
+				Course manuals
+				Devices external to computer on which they are taking the exam, including but not limited to: mobile phones, PDAs, wearable computers, smart glasses, smart watches
+				Desk must be clear of all notes and electronics
+
+		
+		Taking the Exam
+		
+			Launching the Exam
+			------------------
+				Candidates can click on the "Take Exam" button, located in My Portal, up to 15 minutes prior to the scheduled start time of their Exam, and will be redirected to the Exam Proctoring Partner's site.
+				Candidates will be prompted to Login to the Exam Proctoring Partner's site, with their LF Account.  Once authenticated to PSI, candidate's can select "My Exams" and click the "Launch Exam" Button to open the Exam Console in a new browser tab.
+				If The Candidate has an issue with the "Take Exam" Button in the Exam in the Exam Preparation Checklist, they can connect directly to https://www.examslocal.com/linuxfoundation and login with their LF Account, select "My Exams" and click the "Launch Exam" Button to open the Exam Console in a new browser tab.
+				Once in the Exam Console, the Proctor Admission Process will begin.
+			
+			Reporting Issues with Launching the Exam
+				If the Launch Exam button is not accessible, the Candidate should contact the Exam Proctoring Partner's Support team, within 15 minutes of the scheduled start time, using one of the following options:
+				Click on the "Online- Click here to get help" button - this opens the chat support function
+				Click on the Support Menu item in the top navigation bar to view the support numbers
+				
+			Proctor Admission Process
+				The proctor admission process can take up to 15-20 mins to complete. The Exam countdown timer does not start until the proctor releases the Exam.
+				The Admission process includes the following:
+				Share screen, Webcam and microphone
+				Ensure the webcam is capable of being moved as the proctor may ask you to pan your surroundings to check for potential violations of exam policy
+
+				ID Verification and authentication process
+				the candidate must present valid Government-issued photo ID that matches the name listed on the Exam Reservation
+				If the name on the Exam Reservation does not match the name on the candidate's Government Issued Photo ID, the candidate will be instructed to:
+				Logoff the PSI Site
+				Login to “My Portal” (https://trainingportal.linuxfoundation.org/learn/dashboard)
+				Click “Verify Again” in the Verify name field of the Exam Prep Checklist and edit their First and Last Name to match their photo ID
+				Log back into www.examslocal.com/linuxfoundation with your LF Account
+
+				Reading and accepting the Exam Rules and terms and conditions of The Linux Foundation Global Certification and Confidentiality Agreement Document.​
+				During the admission process, the proctor may ask to review the applications and services running on the candidate's machine to detect Remote Access Software (e.g. LiteManager) which violates the Certification and Confidentiality agreement.
+				If Remote Access Software is detected and running on your machine, your exam session will be terminated immediately and your exam registration will be cancelled without a refund in accordance with the Exam Misconduct policy
+				Upon completing the admission process and when the proctor has verified that the Candidate's testing environment and surrounding area meets the testing requirements, the Proctor will release the exam
+			
+			Exam User Interface
+			Pick the image from	https://docs.linuxfoundation.org/tc-docs/certification/lf-candidate-handbook/exam-user-interface
+				
+				Linux Foundation Certification Exams User Interface
+					The Exam User Interface for all Certification exams except JSNAD and JSNSD, is composed of Three main areas:
+						Exam Console Functions
+						Content Panel
+						Linux Server Terminal
+
+			Exam Console Functions in Top Menu Bar
+				The menu bar across the top of the exam console contains the Exam Console Tools.
+				To turn on webcam-sharing, click Camera from top menu.
+				To turn on screensharing, click Desktop from top menu.
+				To ask the proctor a question during the exam, select Live Chat from top menu.
+				Clicking Exam Controls from top menu offers the following choices:
+				Show Testing Rules: select this to review the exam rules during an exam.
+				Refresh Exam Window: use to refresh the Linux Server Terminal without reloading the entire web page.
+				Reset Console: use to reset the HTML terminal application and to flush all firewall settings on the candidate's server.
+				Pause Exam: use to request break from proctor. (Note: the exam timer continues to run through even if proctor approves break request.)
+				End Exam: Candidate can use this to indicate to proctor they are ready to end the exam.
+				Notepad: use this to make notes during the exam, e.g. keeping a list of items to revisit. Please note that notes entered here will not be retained or accessible after the exam has ended
+				
+			
+			Content Panel
+				The Content Panel (left pane) contains the exam tasks, describes the point value of a task and displays a timer for the exam.
+				Exam tasks instruct you to complete a step, or a series of steps.
+				Candidates can navigate between exam tasks by clicking on the Previous or Next button, or they can jump to a specific exam task by selecting the task number from the drop-down list.
+				Candidates can flag an exam task by clicking the Flag this to return box, to remind them to finish/review the task. The task dropdown list will indicate the task you have flagged. When you have revisited this task, you can click Unflag
+				Exam tasks contain text that is formatted as copyable values (e.g. file names, port numbers, etc). The copyable values highlight when a Candidate’s cursor hovers over formatted text. Candidates can click on the highlighted value within the Content panel to Copy the value & then Paste it directly into the terminal window.
+				Candidates may switch between languages (if available) during the exam by clicking on the Select Language drop down list
+				The timer bar is set to run for the duration of the exam. Please note:
+				Requesting a break via the Pause Exam function will not stop the timer.
+				The Proctor keeps the ultimate timer for the exam.
+				The Candidate should check with the Proctor for a true reading of time remaining in the exam if there is any doubt or in cases where the timer has been reset.
+				
+			
+			
+			Linux Server Terminal
+				The Linux Server Terminal (on right) displays the terminal of a Linux Server. 
+				Root privileges can be obtained by running ‘sudo -i’.
+				You should avoid rebooting node-1, as the supporting infrastructure will take around 15 minutes to start, and stabilize. You are free to reboot any node other than node-1 at any time.
+				Do not stop or tamper with the certerminal or sshd configuration and process on node-1 as this will END YOUR EXAM SESSION.
+				Do not block incoming ports 8080/tcp, 4505/tcp and 4506/tcp. This includes firewall rules that are found within the distribution's default firewall configuration files as well as interactive firewall commands.
+				Use Ctrl+Alt+W instead of Ctrl+W.
+				Ctrl+W is a keyboard shortcut that will close the current tab in Google Chrome.
+				Ctrl+C and Ctrl+V are not supported in your exam terminal To copy and paste please use;
+				For Linux: select text for copy and middle button for paste (or both left and right simultaneously if you have no middle button).
+				For Mac: ⌘+C to copy and ⌘+V to paste.
+				For Windows: Ctrl+Insert to copy and Shift+Insert to paste.
+				Installation of services and applications included in this exam may require modification of system security policies to successfully complete.
+				Only a single terminal console is available during the exam. Terminal multiplexers such as GNU Screen and tmux can be used to create virtual consoles.
+				To change the font size in the terminal please use the native Chrome keys: Ctrl and '+' or Ctrl and '-'.
+				You should avoid changing the locale of the system during your exam.
+				You should not manipulate the firewall of node-1, or tamper with any of the running lxd or dnsmasq processes.
+				
+			

@@ -1,4 +1,4 @@
-#Used for defining multiple alternate names for kube-apiserver
+#Used for defining multiple alternate names for kube-apiserverf
 [req]
 req_extensions = v3_req
 distinguished_name = req_distinguished_name

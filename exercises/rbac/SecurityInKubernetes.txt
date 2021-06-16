@@ -157,5 +157,5 @@ All access to hosts should be secured
 			
 			Hackers can't get this signed because validation would fail.
 			
-			CA's themselves as set of private and public key's. Public key's of valid CA's are available in our browsers. It comes in trusted Certificates.
+			CA's themselves as set of private and public key's. Public key's of valid CA's are available in our browsers. It comes in trusted Certificates.	
 			

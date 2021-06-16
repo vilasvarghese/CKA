@@ -1,0 +1,13 @@
+https://medium.com/@ContinoHQ/the-ultimate-guide-to-passing-the-cka-exam-1ee8c0fd44cd
+https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/04-certificate-authority.md
+https://kubernetes.io/docs/tasks/
+https://www.manning.com/books/kubernetes-in-action
+https://livebook.manning.com/book/kubernetes-in-action/chapter-11/1
+https://github.com/larkintuckerllc/k8s-cka-tutorial
+https://medium.com/bb-tutorials-and-thoughts/how-to-pass-the-certified-kubernetes-administrator-cka-exam-9e01f1aa93b8
+https://medium.com/bb-tutorials-and-thoughts/all-you-need-to-know-about-docker-certified-associate-dca-exam-21dd2ccadbc0
+https://medium.com/bb-tutorials-and-thoughts/how-to-pass-the-certified-kubernetes-application-developer-ckad-exam-503e9562d022
+https://ravikirans.com/cka-kubernetes-exam-study-guide/
+https://github.com/Praqma/LearnKubernetes/blob/master/kamran/Kubernetes-The-Hard-Way-on-AWS.md
+https://github.com/Praqma/LearnKubernetes/blob/master/kamran/Kubernetes-The-Hard-Way-on-GCE.md
+https://github.com/prabhatsharma/kubernetes-the-hard-way-aws

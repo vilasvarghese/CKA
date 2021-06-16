@@ -2,6 +2,9 @@ View certificates in existing cluster.
 
 	where to look for what?
 	
+	kube-apiserver
+
+docker o/s logs reader command
 
 docker ps -a
 docker logs <continer id>

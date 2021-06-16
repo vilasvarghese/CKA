@@ -6,21 +6,25 @@ kubectl create configmap <name you want> <file/directory - data-source>
 Lab1 
 
 # Create the local directory
-mkdir -p configure-pod-container/configmap/
+mkdir -p cka/configmap/
+cd cka/configmap/
 
-# Download the sample files into `configure-pod-container/configmap/` directory
-wget https://kubernetes.io/examples/configmap/game.properties -O configure-pod-container/configmap/game.properties
-wget https://kubernetes.io/examples/configmap/ui.properties -O configure-pod-container/configmap/ui.properties
+# Download the sample files into `cka/configmap/` directory
+wget https://kubernetes.io/examples/configmap/game.properties -O game.properties
+wget https://kubernetes.io/examples/configmap/ui.properties -O ui.properties
+
+curl https://kubernetes.io/examples/configmap/game.properties -o game.properties
+curl https://kubernetes.io/examples/configmap/ui.properties -o ui.properties
 
 # Create the configma. This will load both the property files
 #Creating config map from a directory
-kubectl create configmap game-config --from-file=configure-pod-container/configmap/
+kubectl create configmap game-config --from-file=.
 
 #Creating config map from a file
-kubectl create configmap game-config-2 --from-file=configure-pod-container/configmap/game.properties
+kubectl create configmap game-config-2 --from-file=./game.properties
 
 #Creating config map from multiple files
-kubectl create configmap game-config-2 --from-file=configure-pod-container/configmap/game.properties --from-file=configure-pod-container/configmap/ui.properties
+kubectl create configmap game-config-2 --from-file=./game.properties --from-file=./ui.properties
 
 Lot more details can be found at
-https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/
+https://kubernetes.io/docs/tasks/cka/configure-pod-configmap/

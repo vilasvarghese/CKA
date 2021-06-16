@@ -1,0 +1,9 @@
+	https://github.com/justmeandopensource/kubernetes/tree/master/kubeadm-ha-multi-master
+or 
+	https://www.linuxtechi.com/setup-highly-available-kubernetes-cluster-kubeadm/
+	
+	RAFT algorith
+	Random timer
+	
+	
+	Quorum = N/2 + 1

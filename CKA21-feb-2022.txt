@@ -1,0 +1,591 @@
+Official administration documentation
+	https://kubernetes.io/docs/tasks/administer-cluster/
+
+https://github.com/walidshaari/Kubernetes-Certified-Administrator
+
+
+Useful aliases
+	alias k=‘kubectl’
+	alias kgp=‘kubectl get pods’
+	alias kgs=‘kubectl get service’
+	alias kd=‘kubectl delete’
+	alias kcf=‘kubectl create -f’
+	alias kaf=‘kubectl apply -f’
+	alias kgpa=‘kubectl get pods --all-namespaces’
+
+Introduction to Kubernetes 
+	• Understanding Kubernetes		Done
+	• Why Kubernetes				Done
+	• What is orchestration			Done
+	• Kubernetes Architecture		Done
+	• Introduction to Pod's			Done
+	• How does Pod's work			Done
+	• Internal's Pod				Done
+	• Use Kubeadm to install a basic cluster		Done
+
+
+
+Workloads & Scheduling	
+	• Understand deployments and how to perform rolling update and rollbacks		Done
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~	
+	• Use ConfigMaps and Secrets to configure applications							Done
+		https://kubernetes.io/docs/concepts/configuration/secret/
+		https://kubernetes.io/docs/concepts/configuration/configmap/
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~	
+	• Know how to scale applications												Done
+	• Understand the primitives used to create robust, self-healing, application deployments
+		Replicaset: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/		Done
+		Deployments: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/		Done
+		Statefulsets: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/	Done
+		Daemonset: https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/			Done
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~		
+	• Understand how resource limits can affect Pod scheduling									Done
+		https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#how-pods-with-resource-requests-are-scheduled
+
+------------------------------------------------------------------------------------
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: frontend
+spec:
+  containers:
+  - name: app
+    image: images.my-company.example/app:v4
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "250m"
+      limits:
+        memory: "128Mi"
+        cpu: "500m"
+  - name: log-aggregator
+    image: images.my-company.example/log-aggregator:v6
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "250m"
+      limits:
+        memory: "128Mi"
+        cpu: "500m"
+------------------------------------------------------------------------------------
+How Pods with resource requests are scheduled
+	When you create a Pod, 
+		scheduler selects a node 
+		Each node has a maximum capacity 
+			for each of the resource types: 
+				CPU 
+				memory 
+		The scheduler ensures that
+			for each resource type
+				sum (resource requests of scheduled containers) < capacity of the node. 
+		Even if actual memory or CPU resource usage on nodes is very low
+			scheduler still refuses to place a Pod on a node if the capacity check fails. 
+			Protects against a resource shortage on a node when resource usage later increases
+			for example, during a daily peak in request rate.
+How Kubernetes applies resource requests and limits
+---------------------------------------------------
+When kubelet starts a container as part of a Pod
+	kubelet passes that container's requests and limits for memory and CPU to the container runtime.
+On Linux
+	the container runtime typically configures kernel cgroups 
+		that apply and enforce the limits you defined.
+
+    The CPU limit defines a hard ceiling on how much CPU time that the container can use. 
+	During each scheduling interval (time slice), 
+		the Linux kernel checks to see if this limit is exceeded; 
+		if so, 
+			the kernel waits before allowing that cgroup to resume execution.
+    The CPU request typically defines a weighting. 
+	If several different containers (cgroups) want to run on a contended system, 
+		workloads with larger CPU requests are allocated more CPU time than workloads with small requests.
+    The memory request is mainly used during (Kubernetes) Pod scheduling. 
+		On a node that uses cgroups v2, 
+		the container runtime might use the 
+			memory request as a hint to set 
+				memory.min and 
+				memory.low.
+    The memory limit defines a memory limit for that cgroup. 
+		If the container tries to allocate more memory than this limit, 
+			the Linux kernel out-of-memory subsystem activates and, 
+				intervenes by stopping one of the processes in the container that tried to allocate memory. 
+		If that process is the container's PID 1, 
+			and the container is marked as restartable, 
+				Kubernetes restarts the container.
+    The memory limit for the Pod or container can also apply to pages in memory backed volumes, 
+		such as an emptyDir. 
+	The kubelet tracks tmpfs emptyDir volumes as container memory use, 
+		rather than as local ephemeral storage.
+
+If a container
+	exceeds its memory request 
+		node that it runs on becomes short of memory 
+			likely that the Pod the container belongs to will be evicted.
+A container might or might not be allowed to exceed its CPU limit for extended periods of time. 
+	container runtimes 
+		don't terminate Pods or 
+		containers for excessive CPU usage.
+
+
+------------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~		
+
+Cluster Architecture, Installation & Configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~		
+
+	• Manage role based access control (RBAC)												Done
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~		
+
+
+	• Provision underlying infrastructure to deploy a Kubernetes cluster
+		https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
+		
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~		
+
+	• Manage a highly-available Kubernetes cluster
+		https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/high-availability/
+			https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/ha-topology/
+			https://www.weave.works/blog/running-highly-available-clusters-with-kubeadm
+			
+			https://www.youtube.com/watch?v=SueeqeioyKY
+			https://github.com/justmeandopensource/kubernetes/tree/master/kubeadm-ha-keepalived-haproxy/external-keepalived-haproxy
+			https://kubesphere.io/docs/installing-on-linux/high-availability-configurations/set-up-ha-cluster-using-keepalived-haproxy/
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~		
+		
+	• Perform a version upgrade on a Kubernetes cluster using Kubeadm
+	
+		
+		https://kubernetes.io/docs/reference/setup-tools/kubeadm/kubeadm-upgrade/
+		https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/
+		https://platform9.com/blog/kubernetes-upgrade-the-definitive-guide-to-do-it-yourself/
+		https://www.golinuxcloud.com/kubernetes-upgrade-version/
+		Best practices
+			https://docs.oracle.com/en-us/iaas/Content/ContEng/Concepts/contengaboutupgradingclusters.htm
+		different deployment strategy (not for CKA)
+			https://thenewstack.io/living-with-kubernetes-cluster-upgrades/
+			
+		configure upgrade (kubeadm upgrade --config)
+			https://blog.honosoft.com/2020/01/31/kubeadm-how-to-upgrade-update-your-configuration/
+				kubeadm upgrade apply --config /etc/kubeadm.yaml --force
+		
+		
+		
+		apt list -a kubeadm
+		yum list -a kubeadm
+		
+		kubectl drain <<nodename>>
+		if required (check the impact before executing)
+		kubectl drain <<nodename>> --ignore-daemonsets --force
+		
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~		
+
+	• Implement etcd backup and restore
+		key-value store
+		information
+			nodes
+			pods
+			configs
+			secrets
+			accounts
+			roles
+			bindings ect.
+			
+		listens on port 2379 by default
+		
+	
+		https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#backing-up-an-etcd-cluster
+		https://youtu.be/DhsFfNSIrQ4
+		
+		https://docs.bitnami.com/tutorials/backup-restore-data-etcd-kubernetes/
+		https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~		
+
+		
+		 sample commands used during backup/restore/update of nodes
+
+		#etcd backup and restore brief
+		export ETCDCTL_API=3  # needed to specify etcd api versions, not sure if it is needed anylonger with k8s 1.19+ 
+		etcdctl snapshot save -h   #find save options
+		etcdctl snapshot restore -h  #find restore options
+
+
+
+		## possible example of save, options will change depending on cluster context, as TLS is used need to give ca,crt, and key paths
+		etcdctl snapshot save /backup/snapshot.db  --cert=/etc/kubernetes/pki/etcd/server.crt  --key=/etc/kubernetes/pki/etcd/server.key --cacert=/etc/kubernetes/pki/etcd/ca.crt
+
+
+		# evicting pods/nodes and bringing back node back to cluster
+		kubectl drain  <node># to drain a node
+		kubectl uncordon  <node> # to return a node after updates back to the cluster from unscheduled state to Ready
+		kubectl cordon  <node>   # to not schedule new pods on a node
+
+		#backup/restore the cluster (e.g. the state of the cluster in etcd)
+
+
+		# upgrade kubernetes worker node
+		kubectl drain <node>
+		apt-get upgrade -y kubeadm=<k8s-version-to-upgrade>
+		apt-get upgrade -y kubelet=<k8s-version-to-upgrade>
+		kubeadm upgrade node config --kubelet-version <k8s-version-to-upgrade>
+		
+		etcdctl --data-dir=/var/lib/etcd/etcd-backup snapshot restore /opt/snapshot.db
+		
+		systemctl restart kubelet
+		kubectl uncordon <node>
+
+
+		#kubeadm upgrade steps
+		kubeadm upgrade plan
+		kubeadm upgrade apply
+
+
+
+
+
+Services & Networking
+	• Understand host networking configuration on the cluster nodes					Done
+		https://kubernetes.io/docs/concepts/cluster-administration/networking/
+	• Understand connectivity between Pods											Done
+		https://kubernetes.io/docs/concepts/workloads/pods/#pod-networking
+	• Understand ClusterIP, NodePort, LoadBalancer service types and endpoints		Done
+		https://kubernetes.io/docs/concepts/services-networking/service/
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~		
+Storage
+	• Understand storage classes, persistent volumes
+		https://kubernetes.io/docs/concepts/storage/storage-classes/
+		Cluster can dynamically creates PV's based on request from PVC.
+		3 parameters are mandatory
+			provisioner
+			parameters: provisioner specific parameters
+			reclaimPolicy	
+		Process
+			Admin setup storage provisioner
+			Admin creates a "storageclass"
+			User creates a PVC
+			k8s automatically creates a PV
+			
+		
+			A StorageClass 
+				a way for adminis to describe the "classes" of storage they offer. 
+				Different classes might map 
+					quality-of-service levels or 
+					backup policies or 
+					arbitrary policies determined by the cluster administrators. 
+				Kubernetes itself is unopinionated about what classes represent. 
+				This concept is sometimes called "profiles" in other storage systems.
+		The StorageClass Resource
+			Each StorageClass 
+				contains the fields 
+					provisioner
+					parameters, and 
+					reclaimPolicy, 
+				used when a PersistentVolume belonging to the class needs to be dynamically provisioned.
+			Name of a StorageClass object is significant
+				how users can request a particular class. 
+			Administrators set the name and other parameters of a class 
+				when first creating StorageClass objects
+				objects cannot be updated once they are created.
+			Administrators can specify a default StorageClass only for PVCs 
+				that don't request any particular class to bind to.
+				Details: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims
+------------------------------------------------
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: standard
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  type: gp3
+reclaimPolicy: Retain
+allowVolumeExpansion: true
+mountOptions:
+  - debug
+volumeBindingMode: Immediate
+------------------------------------------------	
+		
+		https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+	
+		Lot more details in https://kubernetes.io/docs/concepts/storage/storage-classes/
+		
+	
+	• Understand volume mode, access modes and reclaim policies for volumes
+		https://kubernetes.io/docs/concepts/storage/persistent-volumes/#volume-mode
+		
+			Kubernetes supports two volumeModes of PersistentVolumes: 
+				Filesystem  
+					default
+					mounted into Pods into a directory
+				Block.
+					presented into a Pod as a block device, without any filesystem on it
+					use a volume as a raw block device
+					If device is empty
+						Kubernetes creates a filesystem on the device 
+							before mounting it for the first time.
+					provide a Pod the fastest possible way to access a volume
+						No filesystem layer between the Pod and the volume
+					Application inside the pod should know how to read data from those restricted pod.
+		
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~				
+		https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~					
+		https://kubernetes.io/docs/concepts/storage/persistent-volumes/#reclaim-policy
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~				
+	• Understand persistent volume claims primitive
+		https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~				
+	• Know how to configure applications with persistent storage
+		https://kubernetes.io/docs/tasks/configure-pod-container/configure-volume-storage/
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~		
+
+
+
+Troubleshooting - 
+	• Evaluate cluster and node logging
+		https://kubernetes.io/docs/concepts/cluster-administration/logging/
+			kubectl logs pods
+			
+		container engines are designed to support logging. 
+		most adopted logging method 
+			writing to standard output and 
+			standard error streams.
+		
+		In a cluster, 
+			logs should have a separate storage and lifecycle 
+				independent of 
+					nodes, 
+					pods, or 
+					containers. 
+			This concept is called cluster-level logging.
+
+		Cluster-level logging architectures 
+			require a separate backend to 
+				store, 
+				analyze, and 
+				query logs. 
+		Kubernetes does not provide a native storage solution for log data. 
+		Instead, there are many logging solutions that integrate with Kubernetes. 
+		
+		Basic logging in Kubernetes
+			echo. or S.o.p
+			
+----------------------------------------------------
+apiVersion: v1
+kind: Pod
+metadata:
+  name: counter
+spec:
+  containers:
+  - name: count
+    image: busybox
+    args: [/bin/sh, -c,
+            'i=0; while true; do echo "$i: $(date)"; i=$((i+1)); sleep 1; done']		
+----------------------------------------------------
+
+By default, if a container restarts, the kubelet keeps one terminated container with its logs.
+If a pod container was restarted. To access the logs of previous container 
+	kubectl logs <pod> --previous 
+If your pod has multiple containers, 
+	kubectl logs 
+	kubectl logs <pod> -c :
+
+	kubectl logs counter -c count
+	
+Two types of system components: 
+	those that run 
+		in a container and 
+			Kubernetes apiserver, etcd, scheduler and kube-proxy
+		not run in a container
+			kubelet and container runtime
+			
+	
+	
+	
+			
+	• Understand how to monitor applications
+		https://kubernetes.io/docs/tasks/debug-application-cluster/resource-usage-monitoring/
+		
+		 examine application performance in a Kubernetes cluster 
+		 examine the 
+			containers, 
+			pods, 
+			services
+			
+		On new clusters use 
+			resource metrics or 
+			full metrics .	
+		
+		Resource metrics pipeline
+		-------------------------
+			provides a limited set of metrics related to cluster components 
+				e.g. Horizontal Pod Autoscaler controller
+			kubectl top utility. 
+			collected by the lightweight, short-term, in-memory metrics-server 
+				exposed via the metrics.k8s.io API.
+				
+			
+		metrics-server 
+		--------------
+			discovers all nodes on the cluster 
+			queries each node's kubelet for 
+				CPU and 
+				memory usage. 
+			The kubelet acts as a bridge between the Kubernetes master and the nodes, managing the pods and containers running on a machine. 
+			The kubelet translates each pod into its constituent containers and fetches individual container usage statistics from the container runtime through the container runtime interface. 
+			The kubelet fetches this information from the integrated cAdvisor for the legacy Docker integration. 
+			It then exposes the aggregated pod resource usage statistics through the metrics-server Resource Metrics API.
+			This API is served at /metrics/resource/v1beta1 on the kubelet's authenticated and read-only ports
+		
+		Full metrics pipeline
+			A full metrics pipeline 
+				gives you access to richer metrics. 
+				Kubernetes can respond to these metrics by 
+					automatically scaling or adapting the cluster based on its current state
+						e.g. Horizontal Pod Autoscaler. 
+			The monitoring pipeline fetches metrics from the kubelet 
+				then exposes them to Kubernetes 
+				via an adapter by implementing either the custom.metrics.k8s.io or external.metrics.k8s.io API.
+
+		Prometheus, 
+			a CNCF project, 
+			can natively monitor Kubernetes, 
+				nodes, 
+				Prometheus itself. 
+				
+				
+				
+
+	• Manage container stdout & stderr logs
+		https://kubernetes.io/docs/concepts/cluster-administration/logging/#logging-at-the-node-level
+	• Troubleshoot application failure
+		https://kubernetes.io/docs/tasks/debug-application-cluster/debug-application/
+		#Use -n as appropriate for the below commands
+		kubectl get all 
+		kubectl get pod <name>
+		kubectl get pod <name> -o wide 
+		kubectl describe pod <name>
+		kubectl get svc
+		kubectl describe svc <name>
+		check name, port, container port
+		docker container inspect <container>
+	• Troubleshoot cluster component failure
+		https://kubernetes.io/docs/tasks/debug-application-cluster/debug-cluster/
+		journalctl -xeu kubelet
+		is the name matching for all services.
+		
+	• Troubleshoot networking
+		https://kubernetes.io/docs/tasks/debug-application-cluster/debug-cluster/
+		https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/
+	
+------------------------------------------------------------------------------------------------	
+	Troubleshoot
+		Application failure
+		
+			1. Check the service
+				2 tier application
+				identiy where to start debugging.
+				
+				kubectl get all -n <namespace>
+				
+				curl http://service dns:port
+				curl http://service ip:port
+				
+				kubectl describe svc <service name>
+				check the endpoints (are ip's listed)
+				
+				compare service to pod label and selectors
+				
+			
+			
+			2. check pod
+				kubectl get pod
+				kubectl describe pod
+				kubectl logs <pod>
+				kubectl events 
+			
+		
+			e.g. if we identify that the name of service /pod is wrong or label is incorrect.
+			
+			kubectl get svc <name> -o yaml > myname.yaml
+				kubectl delete svc
+				fix the yaml
+				update it to the name used in application.
+				
+				kubectl apply -f myname.yaml
+		
+		Worker node failure
+		Control plane failure
+		Networking failure
+		
+
+
+
+sudo apt -y --allow-downgrades install kubectl=1.22.4-00
+
+Additional reference : can walk through if we have time.
+	https://github.com/alijahnas/CKA-practice-exercises/blob/CKA-v1.20/troubleshooting.md
+
+https://rudimartinsen.com/2021/01/14/cka-notes-troubleshooting/
+https://rudimartinsen.com/2021/01/18/cka-notes-pod-service-account/
+https://rudimartinsen.com/2021/01/19/cka-notes-resource-requirements-limits/
+	cpu resources - https://kubernetes.io/docs/tasks/configure-pod-container/assign-cpu-resource/#specify-a-cpu-request-that-is-too-big-for-your-nodes
+	memory resources - https://kubernetes.io/docs/tasks/configure-pod-container/assign-memory-resource/
+	
+https://rudimartinsen.com/2021/01/18/cka-exam-review/
+https://rudimartinsen.com/2021/01/14/cka-notes-logging/
+https://rudimartinsen.com/2021/01/13/cka-notes-application-monitoring/	
+https://thegcpgurus.com/how-to-troubleshoot-a-kubernetes-cluster-cka-preparation-series/
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+How to schedule a pod on a particular node?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+###########################################
+Ignore below
+
+###########################################
+	
+25% - Cluster Architecture, Installation & Configuration
+	• Manage role based access control (RBAC)
+	• Provision underlying infrastructure to deploy a Kubernetes cluster
+	• Perform a version upgrade on a Kubernetes cluster using Kubeadm
+	• Implement etcd backup and restore
+15% - Workloads & Scheduling	
+	• Understand deployments and how to perform rolling update and rollbacks
+	• Use ConfigMaps and Secrets to configure applications
+	• Know how to scale applications
+	• Understand the primitives used to create robust, self-healing, application deployments
+	• Understand how resource limits can affect Pod scheduling
+	• Awareness of manifest management and common templating tools
+20% - Services & Networking
+	• Understand host networking configuration on the cluster nodes
+	• Understand connectivity between Pods
+	• Understand ClusterIP, NodePort, LoadBalancer service types and endpoints
+	• Know how to use Ingress controllers and Ingress resources
+	• Know how to configure and use CoreDNS
+	• Choose an appropriate container network interface plugin
+10% - Storage
+	• Understand storage classes, persistent volumes
+	• Understand volume mode, access modes and reclaim policies for volumes
+	• Understand persistent volume claims primitive
+	• Know how to configure applications with persistent storage
+30% - Troubleshooting
+	• Evaluate cluster and node logging
+	• Understand how to monitor applications
+	• Manage container stdout & stderr logs
+	• Troubleshoot application failure
+	• Troubleshoot cluster component failure
+	• Troubleshoot networking	
+	
+	
+	
+create	kubectl create -f <manifest> -n <namespace>
+update 	kubectl apply -f <manifest>  -n <namespace>
+delete	kubectl delete -f <manifest> -n <namespace>
+get		kubectl get <resource> <name>
+get		kubectl get <resource> <name> -o wide
+		kubectl describe <resource> <name>
+		
+		

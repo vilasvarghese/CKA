@@ -201,45 +201,7 @@ Cluster Architecture, Installation & Configuration
 		https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~		
 
-		
-		 sample commands used during backup/restore/update of nodes
-
-		#etcd backup and restore brief
-		export ETCDCTL_API=3  # needed to specify etcd api versions, not sure if it is needed anylonger with k8s 1.19+ 
-		etcdctl snapshot save -h   #find save options
-		etcdctl snapshot restore -h  #find restore options
-
-
-
-		## possible example of save, options will change depending on cluster context, as TLS is used need to give ca,crt, and key paths
-		etcdctl snapshot save /backup/snapshot.db  --cert=/etc/kubernetes/pki/etcd/server.crt  --key=/etc/kubernetes/pki/etcd/server.key --cacert=/etc/kubernetes/pki/etcd/ca.crt
-
-
-		# evicting pods/nodes and bringing back node back to cluster
-		kubectl drain  <node># to drain a node
-		kubectl uncordon  <node> # to return a node after updates back to the cluster from unscheduled state to Ready
-		kubectl cordon  <node>   # to not schedule new pods on a node
-
-		#backup/restore the cluster (e.g. the state of the cluster in etcd)
-
-
-		# upgrade kubernetes worker node
-		kubectl drain <node>
-		apt-get upgrade -y kubeadm=<k8s-version-to-upgrade>
-		apt-get upgrade -y kubelet=<k8s-version-to-upgrade>
-		kubeadm upgrade node config --kubelet-version <k8s-version-to-upgrade>
-		
-		etcdctl --data-dir=/var/lib/etcd/etcd-backup snapshot restore /opt/snapshot.db
-		
-		systemctl restart kubelet
-		kubectl uncordon <node>
-
-
-		#kubeadm upgrade steps
-		kubeadm upgrade plan
-		kubeadm upgrade apply
-
-
+		docker-k8s\yaml\etcdbackup\Notes.txt
 
 
 
@@ -345,7 +307,7 @@ volumeBindingMode: Immediate
 Troubleshooting - 
 	• Evaluate cluster and node logging
 		https://kubernetes.io/docs/concepts/cluster-administration/logging/
-			kubectl logs pods
+			kubectl logs <pods>
 			
 		container engines are designed to support logging. 
 		most adopted logging method 
@@ -390,6 +352,7 @@ If a pod container was restarted. To access the logs of previous container
 If your pod has multiple containers, 
 	kubectl logs 
 	kubectl logs <pod> -c :
+		
 
 	kubectl logs counter -c count
 	
@@ -400,7 +363,8 @@ Two types of system components:
 		not run in a container
 			kubelet and container runtime
 			
-	
+		journalctl -xeu kubelet
+		journalctl -xeu docker
 	
 	
 			
@@ -432,8 +396,10 @@ Two types of system components:
 			queries each node's kubelet for 
 				CPU and 
 				memory usage. 
-			The kubelet acts as a bridge between the Kubernetes master and the nodes, managing the pods and containers running on a machine. 
-			The kubelet translates each pod into its constituent containers and fetches individual container usage statistics from the container runtime through the container runtime interface. 
+			The kubelet acts as a bridge between the Kubernetes master and the nodes, 
+				managing the pods and containers running on a machine. 
+			The kubelet translates each pod into its constituent containers and 
+				fetches individual container usage statistics from the container runtime through the container runtime interface. 
 			The kubelet fetches this information from the integrated cAdvisor for the legacy Docker integration. 
 			It then exposes the aggregated pod resource usage statistics through the metrics-server Resource Metrics API.
 			This API is served at /metrics/resource/v1beta1 on the kubelet's authenticated and read-only ports

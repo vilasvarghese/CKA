@@ -1,3 +1,38 @@
 https://medium.com/@kannan_ak/how-i-passed-cka-certified-kubernetes-administrator-exam-d8b66fd4db8a
 
 https://medium.com/faun/preparation-and-resources-for-cka-exam-ca868fc678c9
+https://www.componentsoft.io/blog/the-kubernetes-cka-exam-11-tips-for-better-chances/
+https://faun.pub/how-to-pass-the-certified-kubernetes-administrator-cka-exam-without-any-stress-57f67e7b6862
+
+
+Try
+	killer.sh
+
+
+Pointers by Mike Mendez and Lynn Rollins
+
+aliases/export:
+	k=kubectl
+	export $do='-o yaml --dry-run=client'
+		to go from kubectl get pods -o yaml --dry-run=client > file.txt to k get po $do > file.txt
+search tips:
+	1. ‘tab enter’ will open the first search result from the results page
+	2. include ‘tasks’ in a search to try and find the relevant task and 
+	3. if unsure what term to search for try the
+	https://kubernetes.io/docs/tasks/
+	4. search for “command ref” and the first result will be the 
+	https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands
+	5. https://kubernetes.io/docs/reference/kubernetes-api/ lists everything that can be in a kubernetes manifest 
+		if you can’t find the docs you need anywhere
+areas to study more
+	ingress and network policy questions are the easiest to study for and are high value questions. 
+	Practice setting up an ingress to a service and 
+	creating network policy for both ingress and egress.
+general
+	create your own kubernetes cluster 
+	Attempt Production-Grade Container Orchestration
+
+
+Learn to use the man pages 
+	(eg. Kubectl create -h) 
+	

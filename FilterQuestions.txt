@@ -1,0 +1,192 @@
+1. Get all running Pods in a specific namespace sorted by age
+Question: How do you list all running Pods in a namespace and sort them by creation time (age)?
+
+	Answer:
+
+	kubectl get pods -n <namespace> --sort-by=.metadata.creationTimestamp
+
+	
+
+2. Get all Pods and filter only the ones in Running state
+Question: How can you get all Pods that are in the Running state?
+
+	Answer:
+
+	kubectl get pods --field-selector=status.phase=Running
+
+3. List Pods in a specific namespace and sort by restart count
+Question: How do you sort Pods in a specific namespace by the number of restarts?
+
+Answer:
+
+	kubectl get pods -n <namespace> --sort-by='.status.containerStatuses[0].restartCount'
+
+4. Get Pods with specific label and sorted by name
+Question: How can you list Pods with a specific label, sorting them by name?
+
+Answer:
+
+ 
+	kubectl get pods -l <label-key>=<label-value> --sort-by=.metadata.name
+
+5. List all nodes sorted by CPU capacity
+Question: How do you get all nodes and sort them by CPU capacity?
+
+Answer:
+
+ 
+	kubectl get nodes --sort-by='.status.capacity.cpu'
+
+
+6. Filter Pods that are not in the Running state
+Question: How can you get a list of Pods that are not in the Running state?
+
+Answer:
+
+ 
+	kubectl get pods --field-selector=status.phase!=Running
+
+
+7. Get all events sorted by timestamp
+Question: How do you list all events in the cluster and sort them by their timestamp?
+
+Answer:
+
+	kubectl get events --sort-by=.metadata.creationTimestamp
+
+
+8. Get Pods with a specific label and filter by namespace
+Question: How do you filter Pods by a label and only in a specific namespace?
+
+Answer:
+
+ 
+	kubectl get pods -n <namespace> -l <label-key>=<label-value>
+
+
+9. Filter Services with a specific type
+Question: How can you list all Services of type LoadBalancer?
+
+Answer:
+
+ 
+	kubectl get svc --field-selector=spec.type=LoadBalancer
+
+
+10. List persistent volumes sorted by capacity
+Question: How do you list all persistent volumes and sort them by their storage capacity?
+
+Answer:
+
+ 
+	kubectl get pv --sort-by=.spec.capacity.storage
+
+
+11. Filter Pods based on Node name
+Question: How do you list Pods that are running on a specific node?
+
+Answer:
+
+ 
+	kubectl get pods --field-selector=spec.nodeName=<node-name>
+
+
+12. Filter Pods by multiple label values
+Question: How can you filter Pods with multiple labels?
+
+Answer:
+
+ 
+	kubectl get pods -l <label-key1>=<label-value1>,<label-key2>=<label-value2>
+
+
+13. Get all ReplicaSets sorted by number of replicas
+Question: How can you list all ReplicaSets sorted by the number of replicas?
+
+Answer:
+
+ 
+	kubectl get rs --sort-by='.spec.replicas'
+
+
+14. Get Services filtered by label and sorted by name
+Question: How do you get Services filtered by a specific label and sorted by name?
+
+Answer:
+
+ 
+	kubectl get svc -l <label-key>=<label-value> --sort-by=.metadata.name
+
+
+15. Filter Pods based on readiness status
+Question: How do you list only the Pods that are not ready?
+
+Answer:
+
+ 
+	kubectl get pods --field-selector=status.conditions[?(@.type=='Ready')].status!=True
+	kubectl get pods --field-selector status.phase=Running
+
+
+16. Sort Pods by Memory usage
+Question: How can you sort Pods by their memory usage?
+
+Answer: This requires a custom column output based on metrics (if available):
+
+ 
+	kubectl top pod --sort-by=memory
+
+
+17. List all Pods sorted by container restarts
+Question: How do you sort all Pods by the number of container restarts?
+
+Answer:
+
+ 
+	kubectl get pods --sort-by='.status.containerStatuses[0].restartCount'
+	
+	
+18. 	
+kubectl get pods --field-selector metadata.name=my-pod
+kubectl get pods --field-selector status.phase=Running
+
+
+
+Running on a node 
+	kubectl get pods --field-selector spec.nodeName=my-node
+	
+	kubectl get pods  -l app=myapp  --sort-by=.metadata.name
+	
+	
+	kubectl get pods --sort-by=.status.startTime
+	kubectl get pods -o=jsonpath="{range .items[*]}{.metadata.name}{'\t'}{.metadata.creationTimestamp}{'\n'}{end}" | sort -k2
+	
+	kubectl get pods --field-selector=status.conditions[?(@.type=="Ready")].status!=True
+	kubectl get pods -o jsonpath="{.items[*].metadata.name} {.items[*].status.podIP}"
+	
+	kubectl get pod -o json 
+	kubectl get pod -o=jsonpath='{.items[0].spec}'
+	kubectl get pod -o=jsonpath='{.items[*].spec}' | jq 
+	kubectl get pod -o=jsonpath='{.items[*].spec}'
+	kubectl get pod -o=jsonpath='{.items[*].spec.containers[*]}{.name}{"\t"}{end}'
+
+
+---------------------
+
+19.
+kubectl get pod --sort-by='.metadata.creationTimestamp'
+	
+	 
+	 
+	 
+jsonpath tutorial 
+		kubectl get node -o json 
+		
+		
+		
+	List the InternalIP of all nodes of the cluster. Save the result to a file
+		k get node -o json
+		k get node -o jsonpath="{.items[*].status.addresses}"
+		k get node -o jsonpath="{.items[*].status.addresses[?(@.type=='InternalIP')]}"
+		k get node -o jsonpath="{range .items[*]}{.status.addresses[?(@.type=='InternalIP')]}{'\n'}{end}"
+		k get node -o jsonpath="{range .items[*]}{.status.addresses[?(@.type=='InternalIP')].address}{'\n'}{end}"

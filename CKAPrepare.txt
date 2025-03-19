@@ -1,0 +1,983 @@
+Refer network policy, rbac
+
+
+Certified Kubernetes Administrator: https://www.cncf.io/certification/cka/
+
+Exam Curriculum (Topics): https://github.com/cncf/curriculum
+
+Candidate Handbook: https://www.cncf.io/certification/candidate-handbook
+
+Exam Tips: http://training.linuxfoundation.org/go//Important-Tips-CKA-CKAD
+
+https://kubernetes.io/docs/reference/kubectl/cheatsheet/
+
+kubelet.service file can be found in 
+	cd /lib/systemd/system/kubelet.service
+	can be found by executing systemctl status kubelet
+	
+	check 
+		/etc/kubernetes/manifests/
+		/var/lib/kubelet/config.yml
+	
+
+
+1. alias k=kubectl
+2. export do="-o yaml --dry-run=client"
+
+#Get all contexts
+3. kubectl config get-contexts
+ 
+#Add user. But will not add to context
+	kubectl config set-credentials ${MAGIC_USER}@kubernetes --client-certificate=$HOME/.certs/${MAGIC_USER}.crt --client-key=$HOME/.certs/${MAGIC_USER}.key --embed-certs=true
+
+#Add to context 
+4. kubectl config set-context user@kubernetes --cluster=kubernetes --user=user@kubernetes --kubeconfig=${instance}.kubeconfig
+
+#Login as that user 	
+	kubectl config use-context default --kubeconfig=${instance}.kubeconfig
+	
+#Add a cluster (default is kubernetes)	
+5.  kubectl config set-cluster kubernetes-the-hard-way \
+    --certificate-authority=ca.pem \
+    --embed-certs=true \
+    --server=https://${KUBERNETES_PUBLIC_ADDRESS}:6443 \
+    --kubeconfig=kube-proxy.kubeconfig
+
+  kubectl config set-credentials system:kube-proxy \
+    --client-certificate=kube-proxy.pem \
+    --client-key=kube-proxy-key.pem \
+    --embed-certs=true \
+    --kubeconfig=kube-proxy.kubeconfig
+
+  kubectl config set-context default \
+    --cluster=kubernetes-the-hard-way \
+    --user=system:kube-proxy \
+    --kubeconfig=kube-proxy.kubeconfig
+
+  kubectl config use-context default --kubeconfig=kube-proxy.kubeconfig
+
+  
+6. kubectl cluster-info --kubeconfig admin.kubeconfig
+
+7. ./etcdctl --version # In version 2
+
+export ETCD_API=3 
+./etcdctl version	#In version 3
+  
+kubectl exec etcd-master -n kube-system etcdctl get / --prefix -keys-only  
+
+ETCDCTL is the CLI tool used to interact with ETCD.
+
+ETCDCTL can interact with ETCD Server using 2 API versions - Version 2 and Version 3.  By default its set to use Version 2. Each version has different sets of commands.
+
+For example ETCDCTL version 2 supports the following commands:
+
+etcdctl backup
+etcdctl cluster-health
+etcdctl mk
+etcdctl mkdir
+etcdctl set
+
+
+Whereas the commands are different in version 3
+
+etcdctl snapshot save 
+etcdctl endpoint health
+etcdctl get
+etcdctl put
+
+To set the right version of API set the environment variable ETCDCTL_API command
+
+export ETCDCTL_API=3
+
+
+
+When API version is not set, it is assumed to be set to version 2. And version 3 commands listed above don't work. When API version is set to version 3, version 2 commands listed above don't work.
+
+
+
+Apart from that, you must also specify path to certificate files so that ETCDCTL can authenticate to the ETCD API Server. The certificate files are available in the etcd-master at the following path. We discuss more about certificates in the security section of this course. So don't worry if this looks complex:
+
+--cacert /etc/kubernetes/pki/etcd/ca.crt     
+--cert /etc/kubernetes/pki/etcd/server.crt     
+--key /etc/kubernetes/pki/etcd/server.key
+
+Below is the final form:
+
+
+
+kubectl exec etcd-master -n kube-system -- sh -c "ETCDCTL_API=3 etcdctl get / --prefix --keys-only --limit=10 --cacert /etc/kubernetes/pki/etcd/ca.crt --cert /etc/kubernetes/pki/etcd/server.crt  --key /etc/kubernetes/pki/etcd/server.key" 
+
+
+
+docker would be provided.
+
+bookmark: https://github.com/lerndevops/educka/blob/master/other/k8s-bookmarks.html
+
+---------------------------
+https://www.cncf.io/certification/cka/
+
+
+8. kubectl run nginx --image=nginx --dry-run=client -o yaml > pod.yaml
+
+
+9. Unsure of an objects spec, type, options?
+kubectl explain <resourcetype>
+
+10.Create an NGINX Pod
+
+kubectl run nginx --image=nginx
+
+Generate POD Manifest YAML file (-o yaml). Don't create it(--dry-run)
+
+kubectl run nginx --image=nginx --dry-run=client -o yaml
+
+Create a deployment
+
+kubectl create deployment --image=nginx nginx
+
+Generate Deployment YAML file (-o yaml). Don't create it(--dry-run)
+
+kubectl create deployment --image=nginx nginx --dry-run=client -o yaml
+
+Generate Deployment YAML file (-o yaml). Don't create it(--dry-run) with 4 Replicas (--replicas=4)
+
+kubectl create deployment --image=nginx nginx --dry-run=client -o yaml > nginx-deployment.yaml
+
+Save it to a file, make necessary changes to the file (for example, adding more replicas) and then create the deployment.
+
+kubectl create -f nginx-deployment.yaml
+
+kubectl expose deployment nginx --port 80
+kubectl scale deployment nginx --replicas=5
+kubectl set image deployment nginx nginx=nginx
+
+OR
+
+In k8s version 1.19+, we can specify the --replicas option to create a deployment with 4 replicas.
+
+kubectl create deployment --image=nginx nginx --replicas=4 --dry-run=client -o yaml > nginx-deployment.yaml
+
+
+
+Important do’s and don’ts (https://akashnamdev88.medium.com/2021-cka-tips-and-tricks-1f35ea457430)
+------------------------------
+Lower the volume or do zero volume in your laptop/desktop so that you will not get the echo voice.
+Understand how and where to search in Kubernetes documentation . In the documentation you can see in right corner specific heading , bookmark those specific .
+“kubectl api-resources” and “kubectl explain” commands to understand the CLI structure .
+
+Lessons Learned
+Clear your concepts properly if its scc can be configure inside or pod or container or both.
+2. Understand which parameter will configure inside pods ,which inside containers and which can configure in both (i.e. env , secrets, configmaps)
+
+3. Understand the certificates of all the control plane resources , users and how you can configure roles and binding using certificates .
+
+4. Always make sure to check the context and namespace you are attempting the next questions. (use CTRL+R and search the previous command)
+
+5. If you get difficult questions initially and feel nervous , go and do the easy ones and then comeback and attempt the difficult because time is very strict
+
+Excellent
+https://github.com/David-VTUK/CKA-StudyGuide
+
+https://github.com/dgkanatsios/CKAD-exercises
+
+https://kishoreteach.medium.com/how-i-scored-96-in-ckad-certified-kubernetes-application-developer-cf4ea6dc2bb4
+https://github.com/namdev88/CKA-Preparation
+
+
+
+ETCD default port 2379
+
+Links accessible:
+CKA:
+	 https://kubernetes.io/docs/, https://kubernetes.io/blog/ 
+CKAD:
+	https://helm.sh/docs/,
+	
+	for other tools : https://docs.linuxfoundation.org/tc-docs/certification/certification-resources-allowed#certified-kubernetes-administrator-cka-and-certified-kubernetes-application-developer-ckad
+	
+documentation
+	https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.22
+	
+tips	
+	https://kodekloud.com/community/t/how-to-nail-the-certified-kubernetes-administrator-exam-on-the-first-attempt/208859/4	
+	https://github.com/kodekloudhub/community-faq/blob/main/student-exam-experiences.pdf
+	https://github.com/dgkanatsios/CKAD-exercises
+	
+https://shenhonglei.com/csdn/cka/
+
+D:\PraiseTheLord\HSBGInfotech\Others\educka	
+https://github.com/lerndevops/educka/blob/master/1-intall/install-kubernetes-v1.24-ubuntu-debian.md
+------------------------------------
+
+Create a namespace called rbac
+Create a service account called job-inspector for the rbac namespace
+Create a role that has rules to get and list job objects
+Create a rolebinding that binds the service account job-inspector to the role created in step 3
+Prove the job-inspector service account can "get" job objects but not deployment objects
+Answer - Imperative
+kubectl create namespace rbac
+kubectl create sa job-inspector -n rbac
+kubectl create role job-inspector --verb=get --verb=list --resource=jobs -n rbac
+kubectl create rolebinding permit-job-inspector --role=job-inspector --serviceaccount=rbac:job-inspector -n rbac
+kubectl --as=system:serviceaccount:rbac:job-inspector auth can-i get job -n rbac 
+kubectl --as=system:serviceaccount:rbac:job-inspector auth can-i get deployment -n rbac
+
+
+Query all ns
+kubectl get pod -A
+kubectl get svc -A
+
+
+in pod
+  - container
+    - name: 
+	- image: 
+    nodeName: <name>
+	
+	
+
+kubectl replace --force -f nginx.yaml
+
+
+Sample questions
+	https://k21academy.com/docker-kubernetes/cka-ckad-exam-questions-answers/
+	
+	kubectl events vs kubectl get events
+online labs	
+	https://killercoda.com/
+	http://labs.play-with-k8s.com/
+	
+	
+kubectl get componentstatus	
+kubectl explain pods
+
+
+static pods
+	https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/
+	try it on node2
+	
+	
+1 pass
+Remote desktop
+
+k alias already present
+alias kg='kubectl get'
+
+k run double --image=busybox --dry-run=client -o yaml > double.yaml
+e double.yaml
+k create -h
+k create deploy -h 	
+
+k run pod1 --image=nginx --labels='env=prod,owner=vilas'
+k get pods -l 'app in (foo,bar)'
+k get pods --selector app=foo,k8s-app=bar
+k get pods -l app=foo,k8s-app=bar
+
+k drain node1 --force --ignore-daemonsets
+k -n prod deploy dep --replicas=3
+
+----------------------------------
+containerd
+	ctr
+	nerdctl
+	crictl 
+	
+	crictl tries connect to the socket in the following order
+	1. unix:///var/run/dockershim.sock
+	2. unix:///run/containerd/containerd.sock
+	3. unix:///run/crio/crio.sock
+	4. unix:///var/run/cri-dockerd.sock
+----------------------------------
+	
+kubectl run nginx --image=nginx --dry-run=client -o yaml	
+	
+	
+-----------------
+POD
+
+Create an NGINX Pod
+
+kubectl run nginx --image=nginx
+
+
+Generate POD Manifest YAML file (-o yaml). Don't create it(--dry-run)
+
+kubectl run nginx --image=nginx --dry-run=client -o yaml
+
+
+Deployment
+
+Create a deployment
+
+kubectl create deployment --image=nginx nginx
+
+
+Generate Deployment YAML file (-o yaml). Don't create it(--dry-run)
+
+kubectl create deployment --image=nginx nginx --dry-run=client -o yaml
+
+
+Generate Deployment with 4 Replicas
+
+kubectl create deployment nginx --image=nginx --replicas=4
+
+
+You can also scale a deployment using the kubectl scale command.
+
+kubectl scale deployment nginx --replicas=4
+
+Another way to do this is to save the YAML definition to a file and modify
+
+kubectl create deployment nginx --image=nginx --dry-run=client -o yaml > nginx-deployment.yaml
+
+
+You can then update the YAML file with the replicas or any other field before creating the deployment.
+
+
+Service
+
+Create a Service named redis-service of type ClusterIP to expose pod redis on port 6379
+
+kubectl expose pod redis --port=6379 --name redis-service --dry-run=client -o yaml
+
+(This will automatically use the pod's labels as selectors)
+
+Or
+
+kubectl create service clusterip redis --tcp=6379:6379 --dry-run=client -o yaml (This will not use the pods labels as selectors, instead it will assume selectors as app=redis. You cannot pass in selectors as an option. So it does not work very well if your pod has a different label set. So generate the file and modify the selectors before creating the service)
+
+
+Create a Service named nginx of type NodePort to expose pod nginx's port 80 on port 30080 on the nodes:
+
+kubectl expose pod nginx --type=NodePort --port=80 --name=nginx-service --dry-run=client -o yaml
+
+(This will automatically use the pod's labels as selectors, but you cannot specify the node port. You have to generate a definition file and then add the node port in manually before creating the service with the pod.)
+
+Or
+
+kubectl create service nodeport nginx --tcp=80:80 --node-port=30080 --dry-run=client -o yaml
+
+(This will not use the pods labels as selectors)
+
+Both the above commands have their own challenges. While one of it cannot accept a selector the other cannot accept a node port. I would recommend going with the kubectl expose command. If you need to specify a node port, generate a definition file using the same command and manually input the nodeport before creating the service.	
+
+
+
+-----------------
+Deploy a redis pod using the redis:alpine image with the labels set to tier=db.
+  kubectl run nginx-pod --image=nginx:alpine
+  kubectl label pods redis tier=db
+  kubectl get pod --show-labels
+  
+Create a new pod called custom-nginx using the nginx image and expose it on container port 8080.  
+ kubectl run custom-nginx --image=nginx --port=8080 
+ 
+ ----------
+ kubectl taint nodes controlplane node-role.kubernetes.io/control-plane:NoSchedule-
+ 
+------------------
+Create a static pod named static-busybox that uses the busybox image and the command sleep 1000
+
+define below in /etc/kubernetes/manifests/
+
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: static-busybox
+  name: static-busybox
+spec:
+  containers:
+  - image: busybox
+    name: static-busybox
+    command: ["sleep", "1000"]
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {} 
+
+------------
+immediately delete pod 
+	kubectl delete pod <pod-name> --now
+	
+----------------
+
+kubectl create configmap webapp-config-map --from-literal=APP_COLOR=darkblue --from-literal=APP_OTHER=disregard	
+
+------------------
+
+k drain controlplane --ignore-daemonsets
+k get node
+on controlplane
+	kubectl cordon controlplane
+	kubectl drain controlplane --ignore-daemonsets
+	apt update 
+	apt install kubeadm=1.19.0-00
+	kubeadm upgrade apply 1.19.0
+	apt install kubelet=1.19.0-00
+	kubectl get node
+	kubectl uncordon controlplane
+
+on node1
+	kubectl drain node01 --ignore-daemonsets
+	k get pod,node -o wide
+	ssh node1
+	apt update -y
+	apt install kubeadm=1.19.0-00
+	kubeadm upgrade node
+	apt install kubelet=1.19.0-00
+	systemctl restart kubelet
+	
+
+
+------------------
+apt-get install etcd-client
+ps -aux | grep kube-api | grep "encryption-provider-config"
+
+status of init container
+kubectl get pod <pod-name> -o jsonpath='{.status.initContainerStatuses}'
+
+kubectl delete pod --now
+
+
+kubectl drain command 
+	gracefully evict all the pods running on a specific node 
+	follows a series of steps to safely remove the pods from 
+		Cordon the node: 	
+			Before evicting the pods, the node is cordoned
+			marked as unschedulable. 
+			
+		Evict the pods: 
+			evict the pods running on the node 
+			sends a termination signal to each pod
+				gracefully shut down. 
+			Kubernetes attempts to reschedule the evicted pods 
+				
+		Wait for pod termination: 
+			After sending the termination signal
+				Kubernetes waits for the pods to gracefully terminate. 
+			Kubernetes forcefully terminates it
+				If a pod does not terminate
+
+		Confirm pod termination: 
+			Kubernetes confirms that the node is empty 
+				check the cluster's control plane. 
+			If any pods remain on the node
+				kubectl drain command fails and reports an error.
+
+		Uncordon the node: 
+			If the drain operation is successful 
+			node is uncordoned. 
+			This makes it schedulable again
+				allowing new pods to be scheduled on the node.
+
+	The kubectl drain command is commonly used when performing maintenance on a node, such as applying updates, replacing hardware, or decommissioning a node from the cluster. It ensures a smooth transition of workload from the drained node to other nodes in the cluster, minimizing downtime and disruptions to your applications.
+	
+kubectl cordon node
+	mark the node as unschedulable 
+	existing pod continue to run
+	
+ kubectl drain --ignore-daemonsets node01 
+ kubectl uncordon node01
+ 
+ If you use 
+	Storage Class called local-storage 
+		in PV and PVC
+			it uses VolumeBindingMode set to WaitForFirstConsumer. 
+	This will delay the binding and provisioning of a PersistentVolume 
+		until a Pod using the PersistentVolumeClaim is created.
+
+
+CNI (Container Network Interface)
+---------------------------------
+	On Container Runtime 
+		Container Runtime must create a network namespace
+		Identify network the container must attach to 
+		Container Runtime to invoke Network Plugin (bridge) when container is ADDed
+		Container Runtime to invoke Network Plugin (bridge) when container is DELeted
+		JSON format of the Network configuration
+	
+	On Plugin 
+		Must support command line arguments ADD/DEL/CHECK
+		Must support parameters container id, network ns etc.
+		Must manage IP address assignment to PODs
+		Must Return results in a specific format
+	Networking model
+		Every POD should have an IP Address
+		Every POD should be able to communicate with every other POD in teh same node.
+		Every POD should be able to communicate with every other POD other other nodes without NAT
+
+	
+If you were to ping google from the controlplane node, which route does it take?		
+		ip route 
+		ip route show default
+	
+	2379 is the port of ETCD to which all control plane components connect to. 2380 is only for etcd peer-to-peer connectivity. When you have multiple controlplane nodes. In this case we don't.
+	
+What is the n/w interface configured for the cluster
+	ip a or ip link or ip link show 
+	
+		look for eth0 ip 
+		
+	ip address show eth0
+	
+What is the interface bridge created by containerd
+	ip adress show type bridge
+	
+Which port is scheduler listening on?
+	netstat -npl | grep -i scheduler 
+
+Which port of etcd is the client connecting 
+	netstat -npa | grep -i etcd | grep -i 2379 | wc -l 
+		count is large - client is connecting there
+		
+	
+Steps to add network (The basic way)
+	ip link add v-net-0 type bridge #CREATE BRIDGE NETWORK 
+	ip link set dev v-net-0 up #BRING IT UP
+	ip addr add 192.168.15.5/24 dev v-net-0 #SET IP TO BRIDGE
+	ip link add veth-red type veth peer name veth-red-br	# CREATE VETH
+	ip link set veth-red netns red	#ATTACH VETH
+	ip -n red addr add 192.168.15.1 dev veth-red	#SET IP TO VETH ENDPOINT
+	ip -n route add....
+	ip -n red link set veth-red up #bring up the interface 
+	#Connect between two machines.
+	ip link set veth-red-br master v-net-0
+	ip netns exec blue ip route add 192.168.1.0/24 via 192.168.15.5
+	iptables -t nat -A POSTROUTING -s 192.168.15.0/24 -j MASQUERADE
+	
+	According to CNI we should support 
+		ADD 
+		DEL 
+		
+	when container comes up kubelet would look for cni configuration
+		--cni-conf-dir=/etc/cni/net.d
+		--cni-bin-dir=/etc/cni/bin
+		
+		execute the script like 
+			./net-script.sh add <container> <namespace>
+			
+	Print Node OS		
+	kubectl get nodes -o jsonpath='{range .items[*]}{.status.nodeInfo.osImage}{"\n"}{end}'
+	
+weave			
+	$ kubectl apply -f https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s.yaml		
+	
+	systemctl cat kubelet
+	ps -aux | grep kubelet
+
+the cluster is based on the kubeam. Kubelet reads a file from 
+	--cni-conf-dir (default /etc/cni/net.d ) 
+		uses the CNI configuration from that file to set up each pod’s network. The CNI configuration file must match the CNI specification, and any required CNI plugins referenced by the configuration must be present in 
+	--cni-bin-dir (default /opt/cni/bin ). and you overwrite these values in /var/lib/kubelet/kubeadm-flags.env
+	
+	
+	What is the range of IP addresses configured for PODs on this cluster?
+	
+		The network is configured with weave. Check the weave pods logs using the command kubectl logs <weave-pod-name> weave -n kube-system and look for ipalloc-range.
+	
+	What is the IP Range configured for the services within the cluster?
+		cat /etc/kubernetes/manifests/kube-apiserver.yaml | grep cluster-ip-range
+		
+	Where is the configuration file located for configuring the CoreDNS service?
+		kubectl describe po coredns-5d78c9869d-7825d -n kube-system
+			Check args
+				
+	What is the root domain/zone configured for this kubernetes cluster?			
+		kubectl describe configmap coredns -n kube-system 		
+			
+	Before applying weave/plugins
+		kubectl get pod kube-proxy -n kube-system
+		identiy configuration 
+			There is a config used 
+				value coming from configmap
+			kubectl get/describe cm <name>
+				find the cidr range
+		update in weave yaml
+		
+	Identify the bridge network on every node 
+		ip link 
+			weave?
+		ls /etc/cni/net.d
+			
+	What is the POD ip range configured 
+		kubectl logs <weave pod> -c weave -n kube-system | grep ip 
+			look for "ip alloc"
+			
+	What is the default gateway configured on node01
+		Create a pod on node01
+			kubectl run busybod --image=busybox --dry-run=client -o yaml -- sleep 1000 > p.yml
+		Edit p.yml 
+			add 
+			nodeName: node01 below spec.
+		exec into pod 
+		execute 
+			"route -n"
+			or 
+			"ip route" 
+			or "ip a" look for eth0 may also give result.
+		
+	We use Containerd as our container runtime. What is the interface/bridge created by Containerd on the controlplane node?
+		ip link and look for a bridge interface created by containerd.
+		
+	Which type of proxy is kube-proxy configured with 
+		kubectl logs <kube-proxy> -n kube-system
+			proxy 
+				iptables?
+				
+	What is service ip range
+		vi /etc/kubernetes/manifests/kube-apiserver 
+			check   - --service-cluster-ip-range=?
+			
+	What is the node ip range with weave 
+		vi weave.yml or 
+		kubectl get ds (daemonset) weave -n kube-system -o yaml > weave.yml
+			check IPALLOC_RANGE
+			
+	Where is the configuration file located for configuring the CoreDNS service?
+		Inspect the Args field of the coredns deployment and check the file used.
+			
+	Where is the configuration file located for configuring the CoreDNS service?		
+		Inspect the Args field of the coredns deployment and check the file used.
+	How is the Corefile passed into the CoreDNS POD?
+		Use the kubectl get configmap command for kube-system namespace and inspect the correct ConfigMap.
+
+	What is the root domain/zone configured for this kubernetes cluster?
+		Run the command: kubectl describe configmap coredns -n kube-system and look for the entry after kubernetes.
+
+References: 
+	https://kubernetes.io/docs/tasks/debug/debug-application/
+		walk through 
+			https://kubernetes.io/docs/tasks/debug/debug-application/determine-reason-pod-failure/
+			https://kubernetes.io/docs/tasks/debug/debug-application/debug-init-containers/
+			
+			https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/
+				kubectl get events --namespace=my-namespace
+				kubectl get events --all-namespaces  | grep -i $podname
+				kubectl describe pod 
+				kubectl get pod -o yaml > p.yml
+				kubectl logs --previous ${POD_NAME} ${CONTAINER_NAME}
+				
+				Add debug containers to pod 
+					kubectl debug -it <pod name> --image=busybox:1.28 --target=<pod name>
+				Copying a Pod while adding a new container
+					kubectl debug myapp -it --image=ubuntu --share-processes --copy-to=myapp-debug
+				Copying a Pod while changing its command
+					kubectl debug myapp -it --copy-to=myapp-debug --container=myapp -- sh
+				Copying a Pod while changing container images
+					kubectl debug myapp --copy-to=myapp-debug --set-image=*=ubuntu
+
+
+	https://kubernetes.io/docs/tasks/debug/debug-cluster/
+
+	worker node troubleshooting
+		kubectl describe node 
+		systemctl status kubelet 
+		journalctl -u kubelet
+		openssl x509 -in /var/lib/kubelet/worker1.crt -text
+
+
+kubelet important locations 
+	/etc/systemd/system/kublet.service/10-kubeadm.conf
+	/var/lib/kubelet/config.yaml
+	/etc/kubernetes/kubelet.conf
+		
+
+Installation 
+	1. Follow 
+		https://kubernetes.io/docs/setup/production-environment/container-runtimes/
+			docker installation (install only containerd)
+			
+			check the system driver 
+				ps -p 1
+			Both containerd (container runtime)  and kubelet should be using same driver 
+				cgroupd or systemd
+			systemd cgroup driver (this is the default - so you don't need to do this)
+			But "Configuring the systemd cgroup driver" should be done.
+		
+sudo apt-get update
+sudo apt-get install -y kubelet=1.26.0-00 kubeadm=1.26.0-00 kubectl=1.26.0-00
+sudo apt-mark hold kubelet kubeadm kubectl
+		
+				kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=<private ip>
+		
+	2. https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
+			
+		
+Question		
+	Print the names of all deployments in the admin2406 namespace in the following format:
+
+DEPLOYMENT CONTAINER_IMAGE READY_REPLICAS NAMESPACE
+
+<deployment name> <container image used> <ready replica count> <Namespace>
+. The data should be sorted by the increasing order of the deployment name.
+
+
+
+Answer:
+		k get deploy -n admin2406 -o=custom-columns=DEPLOYMENT:metadata.name,CONTAINER_IMAGE:spec.template.spec.containers[*].image,READY_REPLICAS:status.readyReplicas,NAMESPACE:metadata.namespace  --sort-by=.metadata.name
+			
+				
+		There is one more way to get the output in the manner you want, without breaking your fingers with the custom-columns, which is to use custom-columns-file option. Simply write out the columns expected into a template file, like so:
+
+		echo "DEPLOYMENT CONTAINER_IMAGE READY_REPLICAS NAMESPACE" > template.txt
+
+		Next, view the deployments in yaml format (or json format if you so prefer) using the command:
+
+		kubectl get deployments -n admin2406 -o yaml > deps.yaml
+
+		View the yaml file and get the paths to the spec that is expected, and edit the template.txt file mentioned above appropriately, so the contents would be:
+
+		DEPLOYMENT CONTAINER_IMAGE READY_REPLICAS NAMESPACE
+		.metadata.name .spec.template.spec.containers[*].image .status.readyReplicas .metadata.namespace
+
+		Finally, execute the following command:
+
+		kubectl get deployments -n admin2406 -o custom-columns-file=template.txt --sort-by=.metadata.name
+
+
+In vi use 
+	:set paste 
+			before pasting content into 
+		
+		
+Q: Create a clusterrole
+	k create clusterrole <name> --verb=create --resource=Deployment,StatefulSet,DaemonSet --dry-run=client -o yaml 
+	
+
+bring down the kubelet on node01
+point to a wrong ca file
+	journalctl -u kubelet -f
+		
+		
+https://github.com/ismet55555/Certified-Kubernetes-Administrator-Notes
+https://github.com/nikhilagrawal577/CKA-Notes		
+
+
+Browsers you can open
+	https://kubernetes.io/docs
+	https://github.com/kubernetes
+	https://kubernetes.io/blog
+You have a notepad
+	
+Difficulty of killer 
+	more complicated
+	
+
+
+kubelet is down?
+	systemctl status kubelet #if it is down and not if it is giving an error 
+	systemctl start kubelet 
+	journalctl -u kubelet 
+	#journalctl -u containerd
+	cat /etc/kubernetes/kubelet.conf
+	cat /var/lib/kubelet/config.yaml
+	
+	systemctl restart kubelet 
+	
+apiserver/controller/etcd/scheduler
+	- static path is modified 
+	- kubectl describe pod <api server > 
+	- kubectl logs <api server> [-f --previous]
+	- /etc/kubernetes/manifests/kube-apiserver.yml 
+		port, certificate location etc.
+		
+	
+	k expose pod name --port=80 --type=NodePort 
+	
+	
+	
+Questions 
+1. Create 3 pods 
+	pod2 should be able to contact pod1 on port 80 but not pod3
+	
+	k run pod1 --image=nginx -l app=pod1
+	k run pod2 --image=busybox -l app=pod2 -- sleep 3000
+	k run pod3 --image=busybox -l app=pod3 -- sleep 3000
+	
+	create a network policy 
+	
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: pod1-access-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: pod1
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: pod2
+    ports:
+    - protocol: TCP
+    port: 80
+#egress is default. so don't need to define.
+
+	k apply -f np.yml
+	k describe networkpolicy <np.yml>
+	
+	k exec -it pod2 -- sh
+	telnet <ip> 80
+	
+2. Create a pod with hard limit .5CPU and 20 Mi in vilas ns
+---------------
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+  namespace: vilas
+spec:
+  containers:
+  - name: my-container
+    image: <your-container-image>
+    resources:
+      limits:
+        cpu: "500m" # 0.5 CPU
+        memory: "20Mi" # 20 Mebibytes
+----------------------------------
+	
+3. Find out all context names. Print to vilas1.txt
+Write the command to display current context to vilas2.txt
+Do the same without kubectl 
+	(a)
+	k config get-contexts 
+	k config get-contexts | awk {'print $2'}
+	k config get-contexts --no-headers | awk {'print $2'} > vilas1.txt
+	
+	find current contexts
+		k config current-context 
+	do it without using kubectl 
+		cat ~/.kube/config | grep -i current-context | sed 's/current-context: //'
+	
+	(b)
+	echo "kubectl config current-contexts" > vilas2.txt
+
+	(c)
+
+
+4. Create a pod on a node (node1)
+	Podname: vilas1
+	Container name: vilasc1
+	image: somename
+	
+	k run vilas1 --image=somename --dry-run=client -o yaml > p1.yml
+	k get node --show-labels
+	update p1.yml 
+	nodeName: <name of node>
+	
+	k apply -f p1.yml
+	
+5. There are two pods p1 and p2 in ns n1
+	scale down p1 in n1
+	
+	k get all -n n1
+		- it can be deployment, rs, stateful set etc.
+		
+	k scale command works for all
+	
+6. Crete pod 
+	name: vilasp
+	image: vilasi
+	configure liveness probe
+		run true
+	configure readiness probe
+		check url http://servicename:80 
+	Create second pod 
+		name: vilasp2
+		image: vilasi2 
+		label: vilasl
+		
+	Update service s1 to should have second should have endpoint as second pod
+	
+7. Write a command to list pods sorted by metada.creationTimestamp
+
+		k get pod -A --sort-by=.metadata.creationTimestamp
+
+8. Create a PV, PVC without storage account and make them binding
+
+9. Create a ds 
+	should run on all nodes
+	cpu and memory limit defined.
+	
+10. 
+	How many master nodes?
+		k get nodes
+	How many worker nodes?
+		k get nodes
+	What is the service cidr	
+		k get pod kube-api-server-cluster1-master1 -n kube-system -o yaml | grep -i service 
+	which network (CNI plugin )
+		cd /opt/cni/bin
+		cd /etc/cni/net.d/
+		cat 10-weave.conflist
+		
+	Which suffix will static pod have that run on the cluster-1
+		[nodename]
+		
+11. Find latest events order by time.
+		k get events -A --sort-by=.metadata.creationTimestamp 
+		
+	kill kube-proxy pod and write the events into a file.
+		k get pod -n kube-system
+		[k get ds -n kube-system]
+		k delete pod <name> -n kube-system
+		k get events -n kube-system 
+		
+	kill containerd 
+12. create a new pod - schedule it on master node 
+	k run name --image=image-name --dry-run=client -o yaml >> p.yml
+	
+	k get nodes
+	update nodeName
+	You may have to apply the taint also sometimes.
+	
+13. scale statefulset to 1 pod 
+
+		k scale statefulset name --replicas=1
+		
+14. find node resource usage
+		k top node
+	find pod resource usage 
+		k top pod 
+	find container resource usage
+		k top pod --containers 
+		
+15. Create a role giving permission to create, manage secret and configmap
+		k create role rolename --verb=create --resource=secret,configmap
+		
+		
+		
+Remember: 	/etc/systemd/system/kublet.service/10-kubeadm.conf
+
+
+Try
+
+
+
+kubectl --as=system:serviceaccount:rbac:job-inspector auth can-i get deployment -n rbac
+kubectl get componentstatus	
+kubectl explain pods
+		
+		
+
+--record is deprecated 
+kubectl annotate deployment nginx kubernetes.io/change-cause="version change to 1.16.0 to latest" --overwrite=true
+	
+
+
+killer.sh
+	You have access to multiple clusters through kubectl contexts. Get all contexts. Find current contexts
+		kubectl config get-contexts
+		
+k replace --force -f <abc.yml>	
+
+TBD: ServiceAccount, ContainerD commands, Network Policy and Ingress
+
+
+
+
+
+- 

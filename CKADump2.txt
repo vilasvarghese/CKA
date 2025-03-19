@@ -1,0 +1,315 @@
+#Reference: https://www.youtube.com/watch?v=udA3OWkmMUY
+
+
+kubectl delete pod <pod-name> --grace-period=0 --force
+
+create a new pod and allow it to set system time
+
+
+Should work if you move the user up to the pod level
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ubuntu-sleeper
+  namespace: default
+spec:
+  securityContext:
+    runAsUser: 1010		#user id of root 
+  containers:
+  - command:
+    - sleep
+    - "4800"
+    image: ubuntu
+    name: ubuntu-sleeper
+    securityContext:
+      capabilities:
+        add: ["SYS_TIME"]
+		
+		
+		kubectl run admin-pod --image=busybox --command sleep 3200 --dry-run=client -o yaml 
+		
+	
+	
+2. 
+Troubleshoot incorrect kubeconfig 	
+
+			check url 
+			   kubectl config view 
+			compare with the kubeconfig provided 
+	
+	
+3. Create  a new deployment - upgrade 
+
+4. deploy and scale 
+5. check kube-api-server config and troubleshoot it 
+	
+6. upgrade node 
+
+	kubernetes.io 
+		search for upgrade cluster 
+		
+	
+	
+	kubectl get nodes 
+	kubectl drain controlplane --ignore-daemonsets	(imp. step not in docs)
+		drain will take care of cordoning also
+	ssh controlplane
+	apt update 
+	sudo apt-cache madison kubeadm (from docs)
+	sudo su
+	apt-mark unhold kubeadm 
+	apt-get update -y 
+	apt-get install kubeadm=1.27.0-00
+	apt-mark hold kubeadm
+	kubeadm upgrade apply v1.27.0
+	apt-get install kubelet=1.27.0-00
+	
+	systemctl restart kubelet 
+	exit (come out of sudo)
+	exit (come out of controlplane)
+	kubectl uncordon controlplane 
+	kubectl get nodes 
+	kubectl drain node node01 --ignore-daemonsets (imp. step not in docs)
+	kubectl get nodes
+		scheduling disabled 
+	ssh node01
+	sudo -i 
+	apt-get update 
+	apt-get install kubeadm=1.27.0-00
+	kubeadm upgrade node 
+	apt-get install kubelet=1.27.0-00
+	systemctl restart kubelet
+	kubectl get nodes
+	kubectl uncordon node01
+	
+	
+	tmux new -s session_name
+	Ctrl + b, d
+	tmux ls
+	tmux a -t session_name	#attach
+	
+
+7. etcd backup 
+	take a backup 
+		use cert. in 
+			CA /root/certificates/ca.crt
+			client /root/certificates/server.crt
+			key: /root/certificates/server.key 
+			
+			CA /etc/kubernetes/pki/etcd/ca.crt
+			client /etc/kubernetes/pki/etcd/server.crt
+			key: /etc/kubernetes/pki/etcd/server.key 
+			
+			
+	cd /root/certificates/
+
+		search etcd snapshot 
+
+		ETCDCTL_API=3 etcdctl --endpoints=https://127.0.0.1:2379 \
+  --cacert=<trusted-ca-file> --cert=<cert-file> --key=<key-file> \
+  snapshot save <backup-file-location>
+  
+ETCDCTL_API=3 etcdctl --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key \
+  snapshot save /tmp/etcdbackup.db
+
+	
+	--cacert= ca cert file 
+	--cert= etcd cert file - generally called server.crt
+	--key= etcd key 		generally called server.key 
+	
+	
+	verify snapshot 
+	etcdutl --write-out=table snapshot status snapshot.db 
+	
+	Restore 
+	replace save with restore in save command 
+		change the file name.
+		add --data-dir=/var/lib/etcd-backup 
+			this can be seen in restore docs 
+			
+		change etcd yaml if required.
+		
+		
+8. JOin a node to master 
+	search for token join in docs 
+		ssh to mater 
+		kubeadm token create --print-join-command
+		if kubelet is not running 
+			restart it
+			
+			
+9. mark node as unschedulable 
+	and move the pods to a diff. node 
+	
+	kubectl cordon kworker
+	kubectl drain kwroker --ignore-daemonsets 
+	kubectl drain kwroker --ignore-daemonsets  --delete-emptydir-data 
+	kubectl uncordon kworker 
+	
+
+10. create pv and pvc 
+	search for hostpath pv 
+	
+	
+	
+	
+	
+11. Create a new ClusterRole named deployment-clusterrole, which only allows to create the following resource types:
+	✑ Deployment
+	✑ Stateful Set
+	✑ DaemonSet
+	Create a new ServiceAccount named cicd-token in the existing namespace app-team1.
+	Bind the new ClusterRole deployment-clusterrole to the new ServiceAccount cicd-token, limited to the namespace app-team1.
+
+
+	kubectl crate clusterrole deployment-clusterrole --verb=create --resource=Deployment,StatefulSet,DaemonSet
+	
+	kubectl create sa cicd-token -n app-team1 
+	kubectl create clusterrolebinding mycrb --clusterrole=deployment-clusterrole --serviceaccount=cicd-token -n app-team1
+	
+	
+	k create role myrole --verb=create 
+	
+
+12. Task -
+Set the node named ek8s-node-0 as unavailable and reschedule all the pods running on it.
+
+
+	#kubectl cordon node eks-node-0
+	kubectl drain node eks-node-0 --ignore-daemonsets --delete-emptydir-data
+		drain will cordon as well.
+
+13. Create a new NetworkPolicy named allow-port-from-namespace in the existing namespace fubar.
+Ensure that the new NetworkPolicy allows Pods in namespace internal to connect to port 9000 of Pods in namespace fubar.
+Further ensure that the new NetworkPolicy:
+✑ does not allow access to Pods, which don't listen on port 9000
+✑ does not allow access from Pods, which are not in namespace internal
+
+
+kubectl label ns my-app project=my-app
+
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-port-from-namespace
+  namespace: fubar
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          project: my-app 
+	- podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 9000
+
+
+14. Task -
+Reconfigure the existing deployment front-end and add a port specification named http exposing port 80/tcp of the existing container nginx.
+Create a new service named front-end-svc exposing the container port http.
+Configure the new service to also expose the individual Pods via a NodePort on the nodes on which they are scheduled.
+
+
+15. Task -
+Check to see how many nodes are ready (not including nodes tainted NoSchedule) and write the number to /opt/KUSC00402/kusc00402.txt.
+
+kubectl get nodes --field-selector=
+	
+Present in cheat sheet
+---------------------
+kubectl run nginx --image=nginx --dry-run=client -o yaml > client.yml 
+kubectl rollout status deploy <name>
+kubectl set image deployment <name> nginx=nginx:1.16.1 
+kubectl rollout history deploy <name>
+kubectl rollout undo deploy name --to-revision=3 
+kubectl scale --replicas=3 deploy <name>
+kubectl expose pod <podname> --name testpod --port=80 --type=NodePort
+kubectl expose deploy <name> --name testpod --port=80 --type=NodePort
+kubectl expose deploy <name> --name mysvc --port=80 --target-port=80 --type=NodePort --protocl=TCP 
+	#edit node-port if required.
+
+kubectl label ns <nsname> key=value 
+k get secret <name> | yq r - 
+	k get secret <name> | yp r - data.username | base64 -d 
+	
+kubectl autoscale deploy --min=3 --max=5 --cpu-percent=80
+	k get hpa 	
+	
+k create ingress vilasingress -n myspace --rule="/<endpoint>:<servicename:port>
+kubectl create role NAME --verb=verb --resource=resource.group/subresource
+kubectl create rolebinding NAME --clusterrole=NAME|--role=NAME [--user=username] [--group=groupname] [--serviceaccount=namespace:serviceaccountname]	
+
+k config set-context --current --namespace=<myns>
+
+journalctl -u kubelet 
+	/etc/kubernetes/kubelet.conf 
+	/var/lib/kubelet/config.yaml 
+
+Not Present in cheat sheet (but create -h can easily get it)
+------------------------------------------------------------
+kubectl create deployment nginx --image=nginx 	
+	
+Not Present in cheat sheet 
+--------------------------
+1. search for change-cause 	
+	kubectl annotate deploy <name> kubernetes.io/change-cause="<message>"	
+
+2. k run b --image=busybox -it -rm --restart=Never -- /bin/sh -c 'echo congrats you got it' 
+
+3. 
+kubectl get node -o json | grep -i internalip -B 100 | jq 
+kubectl get node -o json | jq -c 'paths'
+
+
+	
+	
+How can I copy & paste?
+	What always works: copy+paste using right mouse context menu
+	What works in Terminal: Ctrl+Shift+c and Ctrl+Shift+v
+	What works in other apps like Firefox: Ctrl+c and Ctrl+v
+	
+	
+Focus area 
+	Volumes -- PVs, PVCs, SCs
+	RBAC -- know how to verify once you provision them
+	Network Policies -- my Achilles heel
+	Ingress 
+	Services (especially NodePorts)
+	Upgrade a node to a target version	
+	Troubleshoot "unready" nodes
+	Monitoring and logging -- easy
+		kubectl logs pods 
+		kubectl top pod 
+		kubectl top node 
+	Sidecars -- really struggled with this one
+	ETCD backup and restore
+	Deployment scaling and recording
+	Draining nodes	
+	query pods 
+		sort 
+		filter 
+	
+	
+	
+	
+https://kubernetes.io/docs/home/
+https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands
+	search for kubectl-command
+https://kubernetes.io/docs/reference/kubectl/cheatsheet/
+
+https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistent-volumes
+
+https://kubernetes.io/docs/concepts/services-networking/network-policies/
+
+https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#backing-up-an-etcd-cluster
+
+
+kubectl get node -o json | grep -i internalip -B 100 | jq 
+kubectl get node -o json | jq -c 'paths'

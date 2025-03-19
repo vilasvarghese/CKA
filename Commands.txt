@@ -1,0 +1,8 @@
+https://ehis.hashnode.dev/different-ways-to-configure-environmental-variables-in-kubernetes
+
+kubectl delete namespace <namespace-name> --force --grace-period=0
+
+
+run containers on multiple instances
+
+

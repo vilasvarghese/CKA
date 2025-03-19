@@ -1,0 +1,51 @@
+Create a 
+	new ClusterRole for a deployment pipeline and 
+	bind it to a specific ServiceAccount scoped 
+	to a specific namespace.
+
+	kubectl config use-context k8s
+	kubectl create clusterrole deployment-clusterrole --verb=create --resource=Deployment,StatefulSet,Daemonset
+	kubectl create sa cicd-token --namespace app-team1
+	kubectl create clusterrolebinding deploy-b --clusterrole=deployment-clusterrole --serviceaccount=app-team1:cicd-token
+	
+	
+Set the node named ek8s-node-0 as unavailable and reschedule all the pods running on it.
+
+
+https://github.com/vilasvarghese/dockerswarm/blob/master/Exercises/Prometheus/instructions.txt
+
+
+vi ~/.bashrc
+
+
+alias k=kubectl
+complete -F __start_kubectl k
+export dry="-o yaml --dry-run=client" # Call it with $dry
+source <(kubectl completion bash)
+
+ ~/.vimrc
+
+set smartcase
+set ignorecase # These two settings allow case-insensitive search
+set paste # So you can paste templates from k8s docs easily
+set shiftwidth=2
+set expandtab
+set tabstop=2 # YAML doesn't work with tabs, only standardised spaces and 2 are easiest to read.
+set cuc # Don't put this in .vimrc, selectively enable in vim to check YAML alignment
+# In vim, do :colorscheme <space> TAB to select then specify it in ~/.vimrc
+
+
+Use tmux. Unlike Kodekloud labs, you have only one terminal and can’t open more. So it becomes essential (though strictly not necessary) to split the screen to minimise having to exit vim and reference terminal output. Tmux is installed by default on the exam terminal.
+
+Get comfortable with tmux
+tmux, you can find more here.
+
+Ctrl-b " # Starts new horizontal pane
+Ctrl-b % # New vertical pane
+Ctrl-b o # Switch pane
+Ctrl-b Pg Up/Down # Scroll up/down in current pane
+Ctrl-b x # Quit pane
+Ctrl-b c # Create window
+Ctrl-b 0-9 # Switch to window number
+Ctrl-b , # Rename current window
+Ctrl-b & # Kill current window
